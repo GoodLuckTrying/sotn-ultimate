@@ -111,6 +111,7 @@ static u8 D_8015635C[][5] = {
     {0x50, 0x50, 0x18, 0x08, 0x1F}, {0x50, 0x50, 0x18, 0x08, 0x5F},
     {0x68, 0x58, 0x10, 0x10, 0x0F}, {0x68, 0x58, 0x10, 0x10, 0x1F},
     {0x50, 0x58, 0x18, 0x10, 0x0F}, {0x50, 0x58, 0x18, 0x10, 0x1F}};
+#if !defined(MOD_MARIA_SAT)
 void RicEntityCrashCrossBeam(Entity* self) {
     MATRIX m;
     SVECTOR rot;
@@ -303,3 +304,7 @@ void RicEntityCrashCrossBeam(Entity* self) {
         gte_stsxy((long*)&prim->x3);
     }
 }
+#else
+// Maria has no item crash (Saturn 060A9CE8)
+void RicEntityCrashCrossBeam(Entity* self) { DestroyEntity(self); }
+#endif

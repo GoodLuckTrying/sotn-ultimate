@@ -8,6 +8,7 @@
 // the crash of subweapon 7. And subweapon 7 is the rebound stone. This is an
 // entity spawned from the rebound stone crash.
 static s32 angles_80155EE0[] = {0x00000F80, 0x00000100, 0x00000700, 0x00000880};
+#if !defined(MOD_MARIA_SAT)
 void func_8016D9C4(Entity* self) {
     PrimLineG2* prim;
     Primitive* prim2;
@@ -177,8 +178,13 @@ void func_8016D9C4(Entity* self) {
         prim2 = prim2->next;
     }
 }
+#else
+// Maria has no item crash (Saturn 060A9CE8)
+void func_8016D9C4(Entity* self) { DestroyEntity(self); }
+#endif
 
 // RIC Entity #50. Blueprint 58. Also created by rebound stone crash. Weird!
+#if !defined(MOD_MARIA_SAT)
 void RicEntityCrashReboundStoneExplosion(Entity* self) {
     Primitive* prim;
     s32 i;
@@ -282,7 +288,12 @@ void RicEntityCrashReboundStoneExplosion(Entity* self) {
         prim = prim->next;
     }
 }
+#else
+// Maria has no item crash (Saturn 060A9CE8)
+void RicEntityCrashReboundStoneExplosion(Entity* self) { DestroyEntity(self); }
+#endif
 
+#if !defined(MOD_MARIA_SAT)
 void RicEntityCrashReboundStone(Entity* entity) {
     switch (entity->step) {
     case 0:
@@ -321,6 +332,10 @@ void RicEntityCrashReboundStone(Entity* entity) {
         break;
     }
 }
+#else
+// Maria has no item crash (Saturn 060A9CE8)
+void RicEntityCrashReboundStone(Entity* entity) { DestroyEntity(entity); }
+#endif
 
 #define BIBLE_PAGE_COUNT 6
 #if defined(VERSION_PSP)
@@ -328,6 +343,7 @@ extern Point16 bible_pages_pos[BIBLE_PAGE_COUNT];
 #else
 static Point16 bible_pages_pos[BIBLE_PAGE_COUNT];
 #endif
+#if !defined(MOD_MARIA_SAT)
 void RicEntityCrashBibleBeam(Entity* self) {
     Primitive* prim;
     s32 i;
@@ -433,6 +449,10 @@ void RicEntityCrashBibleBeam(Entity* self) {
     self->hitboxWidth = abs(self->hitboxOffX);
     self->hitboxHeight = var_s7 - self->posY.i.hi;
 }
+#else
+// Maria has no item crash (Saturn 060A9CE8)
+void RicEntityCrashBibleBeam(Entity* self) { DestroyEntity(self); }
+#endif
 
 static s16 bible_page_angles[BIBLE_PAGE_COUNT] = {
     0x0400, 0x06AB, 0x0955, 0x0C00, 0x0EAB, 0x1155,
@@ -442,6 +462,7 @@ extern s32 bible_pages_volume;
 #else
 static s32 bible_pages_volume;
 #endif
+#if !defined(MOD_MARIA_SAT)
 void RicEntityCrashBible(Entity* self) {
     Primitive* prim;
     s32 i;
@@ -641,6 +662,10 @@ void RicEntityCrashBible(Entity* self) {
         prim = prim->next;
     }
 }
+#else
+// Maria has no item crash (Saturn 060A9CE8)
+void RicEntityCrashBible(Entity* self) { DestroyEntity(self); }
+#endif
 
 void func_8016F198(Entity* self) {
     const int PrimCount = 16;
@@ -769,6 +794,7 @@ void func_8016F198(Entity* self) {
 // it as a crash, it makes 4 floating ricStopWatches. When they are done they
 // disappear in a spinning sparkle. This entity represents that sparkle. 4
 // copies of this entity are made when the crash is done.
+#if !defined(MOD_MARIA_SAT)
 void RicEntityCrashStopwatchDoneSparkle(Entity* self) {
     s32 sp4C;
     s32 selfX;
@@ -1111,6 +1137,10 @@ void RicEntityCrashStopwatchDoneSparkle(Entity* self) {
         }
     }
 }
+#else
+// Maria has no item crash (Saturn 060A9CE8)
+void RicEntityCrashStopwatchDoneSparkle(Entity* self) { DestroyEntity(self); }
+#endif
 
 // Created by blueprint #73.
 // When Stopwatch crash ends, each of the 4 ricStopWatches shoots out a
@@ -1118,6 +1148,7 @@ void RicEntityCrashStopwatchDoneSparkle(Entity* self) {
 // attacking part of that lightning. It does not do any graphics and just has
 // the hitbox. Not clear why this is a dedicated entity rather than having one
 // entity that is graphics + hitbox for the lightning.
+#if !defined(MOD_MARIA_SAT)
 void RicEntityStopwatchCrashLightning(Entity* self) {
     switch (self->step) {
     case 0:
@@ -1136,7 +1167,12 @@ void RicEntityStopwatchCrashLightning(Entity* self) {
         break;
     }
 }
+#else
+// Maria has no item crash (Saturn 060A9CE8)
+void RicEntityStopwatchCrashLightning(Entity* self) { DestroyEntity(self); }
+#endif
 
+#if !defined(MOD_MARIA_SAT)
 void RicEntityCrashStopwatch(Entity* self) {
     // Kind of funny control flow.
     // On odd steps, we'll create a ricStopWatch, and on evens, we wait.
@@ -1174,6 +1210,10 @@ void RicEntityCrashStopwatch(Entity* self) {
         break;
     }
 }
+#else
+// Maria has no item crash (Saturn 060A9CE8)
+void RicEntityCrashStopwatch(Entity* self) { DestroyEntity(self); }
+#endif
 
 static s16 GetAguneaLightningAngle(s16* arg0, s16 arg1, s16 arg2, s16* arg3) {
     arg1 += rand() % 256 - 0x80;

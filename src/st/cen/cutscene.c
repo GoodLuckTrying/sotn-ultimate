@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "cen.h"
+#include "mod_psp_script.h" // the PSP dub toggle's script copies
 #include "../pfn_entity_update.h"
 #include <cutscene.h>
 
@@ -115,6 +116,11 @@ void EntityCutscene(Entity* self) {
         }
 #ifdef VERSION_HD
         if (SetCutsceneScript(cutscene_data) & 0xFF) {
+#elif defined(MOD_MARIA_BOSS)
+        // Saturn port: the Saturn's two scripts around Maria's fight
+        if (SetCutsceneScript(!MOD_MARIA_BOSS_ON() ? cutscene_data
+                              : self->params == 1  ? g_MbScriptPost
+                                                   : g_MbScriptPre)) {
 #else
         if (SetCutsceneScript(cutscene_data)) {
 #endif
@@ -617,6 +623,14 @@ void EntityCutscene(Entity* self) {
             break;
 
         case 7:
+#if defined(MOD_MARIA_BOSS)
+            // the first script (before the fight) sets nothing
+            if (MOD_MARIA_BOSS_ON() && self->params != 1) {
+                DestroyEntity(self);
+                g_CutsceneHasControl = 0;
+                break;
+            }
+#endif
             DestroyEntity(self);
             g_CastleFlags[MET_MARIA_IN_CEN] = 1;
             g_api.TimeAttackController(

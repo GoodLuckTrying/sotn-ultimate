@@ -4,6 +4,7 @@
 #include <sfx.h>
 
 #define RIC_SPRITE_COUNT 197 // useful to sync PSX and PSP
+#include "../../mods/sotn-ultimate/src/maria_saturn/ric_mod_maria.h"
 
 #define GAME_OVER 0x80000
 
@@ -119,6 +120,34 @@ enum RicEntities {
     E_CRASH_STOPWATCH_LIGHTNING,     // RicEntityStopwatchCrashLightning
     E_TELEPORT,                      // RicEntityTeleport
     E_DUMMY_66,                      // RicEntityDummy
+#if defined(MOD_MARIA_SAT)
+    // Saturn Maria: her entity ids as on the Saturn (mar_attacks.h)
+    E_MAR_68,
+    E_MAR_SHOT, // 69 060B9404
+    E_MAR_KICK, // 70 060AD0E8
+    E_MAR_DIVE, // 71 060AD248
+    E_MAR_72,
+    E_MAR_KNUCKLE,  // 73 060BADA8 Guardian Knuckle
+    E_MAR_GENBU,    // 74 060BAFF0 Genbu (heal)
+    E_MAR_BYAKKO,   // 75 060BB4AC Byakko
+    E_MAR_SEIRYU,   // 76 060BBEF8 Seiryuu (summons the dragon)
+    E_MAR_SUZAKU,   // 77 060BC320 Suzaku (the bird familiar)
+    E_MAR_FLAME,    // 78 060BB334 Byakko's flames
+    E_MAR_DRAGON,   // 79 060BB868 Seiryuu's dragon (head + body)
+    E_MAR_STAR,     // 80 060BB724 sparkle
+    E_MAR_TRAIL,    // 81 060BCBD8 Suzaku's trail
+    E_MAR_CHARGE_1, // 82 060B9B88
+    E_MAR_CHARGE_2, // 83 060B9D88
+    E_MAR_LASER,    // 84 060B96C0
+    E_MAR_SPARK,    // 85 060B99A8
+    E_MAR_86,
+    E_MAR_87,
+    E_MAR_CHARGED,   // 88 060BD150
+    E_MAR_AURA,      // 89 060BD244
+    E_MAR_COUNTDOWN, // 90 060BCCE8 Four Beasts countdown
+    E_MAR_BEASTS,    // 91 060BCFF4 Four Beasts: her body hurts
+    E_MAR_92,
+#endif
     NUM_ENTITIES,
 };
 

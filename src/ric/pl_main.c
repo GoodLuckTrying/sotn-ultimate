@@ -141,6 +141,9 @@ void RicInit(s16 initParam) {
     *spriteptr = (SpriteParts*)spritebank2;
     spriteptr++;
     *spriteptr = (SpriteParts*)spritebank3;
+#if defined(MOD_MARIA_SAT)
+    MarInit();
+#endif
     for (e = &g_Entities[E_AFTERIMAGE_1], i = 0; i < 3; i++, e++) {
         DestroyEntity(e);
         e->animSet = ANIMSET_OVL(0x10);
@@ -290,6 +293,7 @@ static void CheckStageCollision(bool arg0) {
     }
 }
 
+#if !defined(MOD_MARIA_SAT)
 static void CheckBladeDashInput(void) {
     s32 pressed;
     s32 up;
@@ -351,6 +355,10 @@ static void CheckBladeDashInput(void) {
         break;
     }
 }
+#else
+// not reachable by the Saturn Maria (MARIA.BIN)
+static void CheckBladeDashInput(void) {}
+#endif
 
 static void CheckHighJumpInput(void) {
     switch (g_RicComboButtons[1].buttonsCorrect) {
@@ -384,7 +392,13 @@ static void CheckHighJumpInput(void) {
                 PLAYER.step == PL_S_FALL) {
                 if (g_Player.unk72) {
                     g_RicComboButtons[1].buttonsCorrect = 0;
+#if defined(MOD_MARIA_SAT)
+                } else if (g_Status.mp > 3) {
+                    // Saturn 060A59A8: her uppercut costs 4 MP
+                    g_Status.mp -= 4;
+#else
                 } else {
+#endif
                     RicSetHighJump();
                     g_RicComboButtons[1].buttonsCorrect = 0;
                 }
@@ -457,7 +471,13 @@ void RicMain(void) {
             break;
         }
         case PL_T_INVINCIBLE_SCENE:
+#if !defined(MOD_MARIA_SAT)
+            // (Maria's Four Beasts uses this timer for 2000 frames and the
+            // Saturn counts it down; the PS1 holds it for the prologue)
             g_Player.timers[PL_T_INVINCIBLE_SCENE] = 4;
+#else
+            MarBeastsPal(1);
+#endif
             break;
         case PL_T_AFTERIMAGE_DISABLE:
             DisableAfterImage(0, 0);
@@ -483,6 +503,9 @@ void RicMain(void) {
             draw->enableColorBlend = 0;
             break;
         case PL_T_INVINCIBLE_SCENE:
+#if defined(MOD_MARIA_SAT)
+            MarBeastsPal(0);
+#endif
             RicSetInvincibilityFrames(1, 16);
             break;
         case PL_T_6:
@@ -573,8 +596,15 @@ void RicMain(void) {
         }
     } else {
     check_input_combo:
+#if defined(MOD_MARIA_SAT)
+        // Saturn 060A5BE8: her high jump, then her command specials (she
+        // has no blade dash)
+        CheckHighJumpInput();
+        MarCheckSpecials();
+#else
         CheckBladeDashInput();
         CheckHighJumpInput();
+#endif
     }
     g_Player.prev_step = PLAYER.step;
     g_Player.prev_step_s = PLAYER.step_s;
@@ -639,6 +669,16 @@ void RicMain(void) {
     case PL_S_INIT:
         RicStepTeleport();
         break;
+#if defined(MOD_MARIA_SAT)
+    case PL_S_MAR_SPECIAL:
+    case PL_S_MAR_SPECIAL + 1:
+    case PL_S_MAR_SPECIAL + 2:
+    case PL_S_MAR_SPECIAL + 3:
+    case PL_S_MAR_SPECIAL + 4:
+    case PL_S_MAR_SPECIAL + 5:
+        MarStepSpecial();
+        break;
+#endif
     }
     g_Player.unk08 = g_Player.status;
 #if defined(FIX_UB) || defined(VERSION_PSP)
@@ -647,6 +687,13 @@ void RicMain(void) {
 #endif
     switch (PLAYER.step) {
     case PL_S_STAND:
+#if defined(MOD_MARIA_SAT)
+        // Saturn 060A5BE8: her backdash (step_s 3) leaves afterimages
+        if (PLAYER.step_s == 3) {
+            newStatus = 0;
+            break;
+        }
+#endif
         newStatus = NO_AFTERIMAGE;
         break;
     case PL_S_WALK:
@@ -659,11 +706,18 @@ void RicMain(void) {
         }
         break;
     case PL_S_FALL:
+#if defined(MOD_MARIA_SAT)
+    case PL_S_JUMP:
+        // Saturn 060A5BE8: 0x2000 only, her jumps leave afterimages
+        newStatus = PLAYER_STATUS_UNK2000;
+        break;
+#else
         newStatus = NO_AFTERIMAGE | PLAYER_STATUS_UNK2000;
         break;
     case PL_S_JUMP:
         newStatus = NO_AFTERIMAGE | PLAYER_STATUS_UNK2000;
         break;
+#endif
     case PL_S_HIGHJUMP:
         RicSetInvincibilityFrames(1, 4);
         break;
@@ -710,7 +764,29 @@ void RicMain(void) {
         newStatus = NO_AFTERIMAGE;
         RicSetInvincibilityFrames(1, 16);
         break;
+#if defined(MOD_MARIA_SAT)
+    case PL_S_MAR_SPECIAL: // Saturn 060A5BE8's status table
+    case PL_S_MAR_SPECIAL + 1:
+    case PL_S_MAR_SPECIAL + 2:
+    case PL_S_MAR_SPECIAL + 3:
+    case PL_S_MAR_SPECIAL + 4:
+        newStatus = PLAYER_STATUS_UNK20000000;
+        break;
+    case PL_S_MAR_SPECIAL + 5:
+        newStatus = 0;
+        break;
+#endif
     }
+#if defined(MOD_MARIA_SAT)
+    // Saturn 060A5BE8 -> 060A5AD4: her charge (not while hit, grabbed,
+    // dead, in a crash or the stage start)
+    MarCharge(
+        PLAYER.step != PL_S_HIT && PLAYER.step != PL_S_BOSS_GRAB &&
+        PLAYER.step != PL_S_DEAD && PLAYER.step != PL_S_STAND_IN_AIR &&
+        PLAYER.step != PL_S_FLAME_WHIP && PLAYER.step != PL_S_HYDROSTORM &&
+        PLAYER.step != PL_S_THROW_DAGGERS && PLAYER.step != PL_S_SUBWPN_CRASH &&
+        PLAYER.step != PL_S_INIT);
+#endif
     if (g_Player.timers[PL_T_ATTACK]) {
         newStatus |= PLAYER_STATUS_UNK400;
     }
@@ -746,6 +822,9 @@ void RicMain(void) {
         g_Player.status |= PLAYER_STATUS_INVINCIBLE;
     }
     g_api.UpdateAnim(D_80155964, (AnimationFrame**)D_8015538C);
+#if defined(MOD_MARIA_SAT)
+    MarChainAnim();
+#endif
     PLAYER.hitboxState = 1;
     PLAYER.hitParams = 0;
     PLAYER.hitPoints = 0;

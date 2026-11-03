@@ -5,7 +5,11 @@
 #include "gen/spritebank3.h"
 #endif
 
+#if defined(MOD_MARIA_SAT)
+#include "mar_spritebank0.h"
+#else
 #include "gen/spritebank0.h"
+#endif
 #include "gen/spritebank1.h"
 #include "gen/spritebank2.h"
 

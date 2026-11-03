@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "ric.h"
 
+#if defined(MOD_MARIA_SAT)
+// Saturn port: the Saturn Maria has no whip; its code is dropped from
+// MARIA.BIN for room (her attacks: mar_attacks.h)
+void RicEntityWhip(Entity* self) { DestroyEntity(self); }
+void RicEntityArmBrandishWhip(Entity* self) { DestroyEntity(self); }
+void func_80167964(Entity* self) { DestroyEntity(self); }
+#else
+
 static Point16 D_801559AC[] = {
     {7, -2}, {16, -2}, {5, -18}, {-14, -18}, {-23, -6}, {-24, -6}, {-25, -6}};
 static Point16 D_801559C8[] = {
@@ -195,7 +203,13 @@ void RicEntityWhip(Entity* self) {
             self->hitboxHeight = 3;
             self->hitboxOffX = 0;
             self->hitboxOffY = 0;
+#if defined(MOD_SATURN)
+            // the JP v1.2 fix: the flame whip (the no-subweapon item crash,
+            // sp4A) hits as fire, 64 attack: PL_W_15, unused on the US disc
+            self->ext.whip.subweaponId = sp4A ? PL_W_15 : PL_W_WHIP;
+#else
             self->ext.whip.subweaponId = PL_W_WHIP;
+#endif
             RicSetSubweaponParams(self);
         }
         if (psp_s4 == 0) {
@@ -550,3 +564,4 @@ void func_80167964(Entity* entity) {
         DestroyEntity(entity);
     }
 }
+#endif

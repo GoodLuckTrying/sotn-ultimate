@@ -228,6 +228,12 @@ void EntityPlatform(Entity* self) {
             self->ext.platformUnk.unk7C = 0;
 #endif
             self->step++;
+#if defined(MOD_MARIA_BOSS)
+            // Saturn 060DE070: on to the fight's wait instead
+            if (MOD_MARIA_BOSS_ON()) {
+                self->step = 10;
+            }
+#endif
         }
         CutsceneCameraPan(0x200);
         break;
@@ -434,6 +440,11 @@ void EntityPlatform(Entity* self) {
             g_Tilemap.y = 0;
 #endif
             self->step++;
+#if defined(MOD_MARIA_BOSS)
+            // the dialogue is over: her g_PlayerDraw slot back to its place
+            // (mod_maria_boss.h moved it clear of the portraits)
+            g_PlayerDraw[8].rect0.y = 0x101;
+#endif
         }
         break;
 
@@ -548,6 +559,84 @@ void EntityPlatform(Entity* self) {
             g_Player.padSim = PAD_NONE;
             g_Player.demo_timer = 1;
             g_api.PlaySfx(SFX_METAL_CLANG_A);
+        }
+        g_Player.demo_timer = 1;
+        break;
+#endif
+
+#if defined(MOD_MARIA_BOSS)
+    // Saturn port: the Saturn's Maria fight (its platform's steps 10-13)
+    case 10:
+        // 060DE134: the first script's end (its SET_FLAG(1)) starts the fight
+        CutsceneCameraPan(0x200);
+        g_Player.padSim = PAD_NONE;
+        g_Player.demo_timer = 1;
+        if (g_CutsceneFlags & 2) {
+            g_PauseAllowed = true;
+            g_unkGraphicsStruct.pauseEnemies = 0;
+            g_ModMariaFight = 1;
+            func_8018F8EC(1);
+            self->step = 11;
+        }
+        break;
+    case 11:
+        // the fight (her death sets step 12)
+#if defined(MOD_CENP)
+        // the PSP's step 6 SetTilemap(): the camera locked on the room's
+        // middle screen (scroll 0x100) for the whole fight. Her fight logic's
+        // positions (e_maria.c: 0x146/0x1B9 around 0x180) assume it; with
+        // the camera following Alucard she was pushed to the screen edge
+        // (her x >= 5 clamp) and he stayed 0x80 from it: never far enough
+        // (0x90) to walk, only her mid-range subweapons
+        g_Tilemap.y = 0x100;
+        g_Tilemap.x = 0x100;
+        g_Tilemap.width = 0x200;
+#endif
+        break;
+    case 12:
+        // 060DE1D8: Alucard walks to the room's middle
+#if defined(MOD_CENP)
+        g_Tilemap.y = 0; // the room's own bounds back (PS1: x 0, y 0, 0x300)
+        g_Tilemap.x = 0;
+        g_Tilemap.width = 0x300;
+#endif
+        g_PauseAllowed = false;
+        g_unkGraphicsStruct.pauseEnemies = 1;
+        g_Player.padSim = PAD_NONE;
+        if (g_Player.status & PLAYER_STATUS_TRANSFORM) {
+            if (g_Timer & 1) {
+                if (g_Player.status & PLAYER_STATUS_BAT_FORM) {
+                    g_Player.padSim = PAD_BAT;
+                } else if (g_Player.status & PLAYER_STATUS_MIST_FORM) {
+                    g_Player.padSim = PAD_MIST;
+                } else if (g_Player.status & PLAYER_STATUS_WOLF_FORM) {
+                    g_Player.padSim = PAD_WOLF;
+                }
+            }
+        } else if (isPlayerTouching || (g_Player.vram_flag & TOUCHING_GROUND)) {
+            if (posX > 384) {
+                g_Player.padSim = PAD_LEFT;
+            } else {
+                g_Player.padSim = PAD_RIGHT;
+            }
+            self->step = 13;
+        }
+        g_Player.demo_timer = 1;
+        break;
+    case 13:
+        // 060DE28A: there, the platform's floor back (then as retail: the
+        // Holy Glasses at the second script's SET_FLAG(3))
+        if (g_Player.padSim == PAD_LEFT && posX <= 384) {
+            g_Player.padSim = PAD_NONE;
+        }
+        if (g_Player.padSim == PAD_RIGHT && posX > 383) {
+            g_Player.padSim = PAD_NONE;
+        }
+        if (g_Player.padSim == PAD_NONE) {
+            player->posX.i.hi = 384 - tilemap->scrollX.i.hi;
+            g_Player.padSim = PAD_LEFT;
+            self->step = 5;
+            func_8018F8EC(0);
         }
         g_Player.demo_timer = 1;
         break;

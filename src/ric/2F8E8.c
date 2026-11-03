@@ -370,6 +370,10 @@ void RicEntitySubwpnThrownVibhuti(Entity* self) {
             temp = -temp;
         }
         if (--self->ext.subweapon.timer == 0) {
+#if defined(MOD_MARIA_SAT)
+            // Saturn 060B1474: her vibhuti leaves a puff (MarEntityAsh)
+            RicCreateEntFactoryFromEntity(self, BP_MAR_ASH, 0);
+#endif
             DestroyEntity(self);
             return;
         }
@@ -793,6 +797,7 @@ static AnimationFrame D_80155EA8[] = {
     POSE(3, 5, 0),  POSE(3, 6, 0),  POSE(3, 7, 0),  POSE(3, 8, 0),
     POSE(3, 9, 0),  POSE(3, 10, 0), POSE(3, 11, 0), POSE(3, 12, 0),
     POSE(3, 13, 0), POSE_LOOP(0)};
+#if !defined(MOD_MARIA_SAT)
 void RicEntityVibhutiCrashCloud(Entity* entity) {
     s32 angle;
 
@@ -836,12 +841,17 @@ void RicEntityVibhutiCrashCloud(Entity* entity) {
         break;
     }
 }
+#else
+// Maria has no item crash (Saturn 060A9CE8)
+void RicEntityVibhutiCrashCloud(Entity* entity) { DestroyEntity(entity); }
+#endif
 
 #if defined(VERSION_PSP)
 extern s32 crash_vibhuti_timer;
 #else
 static s32 crash_vibhuti_timer;
 #endif
+#if !defined(MOD_MARIA_SAT)
 void RicEntityCrashVibhuti(Entity* self) {
     FakePrim* prim;
     s32 angle;
@@ -939,7 +949,12 @@ void RicEntityCrashVibhuti(Entity* self) {
         break;
     }
 }
+#else
+// Maria has no item crash (Saturn 060A9CE8)
+void RicEntityCrashVibhuti(Entity* self) { DestroyEntity(self); }
+#endif
 
+#if !defined(MOD_MARIA_SAT)
 void RicEntityCrashReboundStoneParticles(Entity* entity) {
     switch (entity->step) {
     case 0:
@@ -958,3 +973,9 @@ void RicEntityCrashReboundStoneParticles(Entity* entity) {
         break;
     }
 }
+#else
+// Maria has no item crash (Saturn 060A9CE8)
+void RicEntityCrashReboundStoneParticles(Entity* entity) {
+    DestroyEntity(entity);
+}
+#endif

@@ -108,6 +108,7 @@ void RicEntitySubwpnHolyWaterBreakGlass(Entity* self) {
 // Entity ID #11. Created by blueprint 12.
 // This is blueprintNum for subweapon ID 16.
 // That is the crash for subweapon 3. That's holy water!
+#if !defined(MOD_MARIA_SAT)
 void RicEntityCrashHydroStorm(Entity* self) {
     PrimLineG2* line;
     s16 primcount;
@@ -215,6 +216,10 @@ void RicEntityCrashHydroStorm(Entity* self) {
     }
     g_Player.timers[PL_T_3] = 16;
 }
+#else
+// Maria has no item crash (Saturn 060A9CE8)
+void RicEntityCrashHydroStorm(Entity* self) { DestroyEntity(self); }
+#endif
 
 // Equivalent to DRA CheckHolyWaterCollision
 s32 RicCheckHolyWaterCollision(s16 baseY, s16 baseX) {
@@ -311,6 +316,15 @@ void RicEntitySubwpnHolyWater(Entity* self) {
         }
         self->posX.i.hi += xMod;
         self->posY.i.hi += -16;
+#if defined(MOD_MARIA_SAT)
+        // Saturn 060B8B24: she tosses it up from in front of her; it falls
+        // (gravity in case 1)
+        self->posX.i.hi += self->facingLeft ? -13 : 13;
+        self->ext.holywater.angle =
+            (rand() & 0xFF) + (PLAYER.facingLeft ? 0x980 : 0xD80);
+        self->velocityX = rcos(self->ext.holywater.angle) * 22; // 28 x 4/5
+        self->velocityY = rsin(self->ext.holywater.angle) * 28;
+#else
         self->ext.holywater.angle = (rand() & 0x7F) + 0xDC0;
         if (PLAYER.facingLeft == 1) {
             self->ext.holywater.angle = (rand() & 0x7F) + 0x9C0;
@@ -318,6 +332,7 @@ void RicEntitySubwpnHolyWater(Entity* self) {
         self->velocityX = ((rcos(self->ext.holywater.angle) << 4) * 0x600) >> 8;
         self->velocityY =
             -((rsin(self->ext.holywater.angle) << 4) * 0x600) >> 8;
+#endif
         self->ext.holywater.subweaponId = PL_W_HOLYWATER;
         RicSetSubweaponParams(self);
         self->hitboxWidth = 4;
@@ -327,6 +342,9 @@ void RicEntitySubwpnHolyWater(Entity* self) {
         break;
     case 1:
         self->posY.val += self->velocityY;
+#if defined(MOD_MARIA_SAT)
+        self->velocityY += 0x2B00;
+#endif
         colRes = RicCheckHolyWaterCollision(0, 0);
         self->posX.val += self->velocityX;
 
@@ -346,14 +364,23 @@ void RicEntitySubwpnHolyWater(Entity* self) {
             g_api.PlaySfx(SFX_RIC_HOLY_WATER_ATTACK);
             self->animSet = 0;
             self->hitboxState = 0;
+#if defined(MOD_MARIA_SAT)
+            // Saturn 060B8B24: 10 frames of breaking glass, then it burns
+            // on at full speed (case 2), a broad trail of flames
+            self->ext.holywater.timer = 10;
+            self->step = 2;
+#else
             self->velocityX = self->velocityX >> 2;
             self->ext.holywater.timer = 0x50;
             self->step = 3;
+#endif
         }
         break;
     case 2:
         if (--self->ext.holywater.timer == 0) {
+#if !defined(MOD_MARIA_SAT) // (she keeps her speed)
             self->velocityX = self->velocityX >> 2;
+#endif
             self->ext.holywater.timer = 0x50;
             self->step++;
         }
@@ -363,7 +390,11 @@ void RicEntitySubwpnHolyWater(Entity* self) {
             RicCreateEntFactoryFromEntity(
                 self, FACTORY(BP_HOLYWATER_FIRE, self->ext.holywater.unk82), 0);
             self->ext.holywater.unk82 += 1;
+#if defined(MOD_MARIA_SAT)
+            self->velocityX -= self->velocityX >> 5; // Saturn: a shift
+#else
             self->velocityX -= (self->velocityX / 32);
+#endif
         }
         colRes = RicCheckHolyWaterCollision(6, 0);
         velocity = self->velocityX;
@@ -484,6 +515,15 @@ void RicEntitySubwpnHolyWaterFlame(Entity* self) {
             prim->priority = PLAYER.zPriority + 2;
             prim->drawMode = DRAW_UNK_40 | DRAW_TPAGE2 | DRAW_TPAGE |
                              DRAW_HIDE | DRAW_COLORS | DRAW_UNK02 | DRAW_TRANSP;
+#if defined(MOD_MARIA_SAT)
+            // Saturn: solid purple flames (her palette, colours as is); they
+            // turn additive again only to fade out (case 2)
+            prim->clut = MAR_FLAME_PAL;
+            prim->r0 = prim->r1 = prim->r2 = prim->r3 = 0x80;
+            prim->g0 = prim->g1 = prim->g2 = prim->g3 = 0x80;
+            prim->b0 = prim->b1 = prim->b2 = prim->b3 = 0x80;
+            prim->drawMode &= ~DRAW_TRANSP;
+#endif
             i++;
             prim = prim->next;
         }
@@ -542,6 +582,9 @@ void RicEntitySubwpnHolyWaterFlame(Entity* self) {
         i = 0;
         while (prim) {
             if (self->ext.holywater.timer <= variant * 2 + 0x18) {
+#if defined(MOD_MARIA_SAT)
+                prim->drawMode |= DRAW_TRANSP;
+#endif
                 if (prim->g0 >= 10) {
                     prim->g0 -= 5;
                 }

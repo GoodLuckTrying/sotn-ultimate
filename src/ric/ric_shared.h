@@ -11,6 +11,11 @@ enum RicInputChecks {
     CHECK_FALL = 4,
     CHECK_FACING = 8,
     CHECK_JUMP = 0x10,
+#if defined(MOD_MARIA_SAT)
+    // Saturn Maria: a jump in the air (her double jump; MariaCheckInput,
+    // Saturn 060AAA68)
+    CHECK_DOUBLE_JUMP = 0x20,
+#endif
     CHECK_CRASH = 0x40,
     CHECK_80 = 0x80,
     CHECK_GRAVITY_HIT = 0x200,
@@ -20,6 +25,11 @@ enum RicInputChecks {
     CHECK_GRAVITY_JUMP = 0x10000,
     CHECK_GROUND_AFTER_HIT = 0x20000,
     CHECK_SLIDE = 0x40000,
+#if defined(MOD_MARIA_SAT)
+    // Saturn Maria: R, her backdash (060AAA68 -> 060A9E40; standing,
+    // walking and running)
+    CHECK_BACKDASH = 0x80000,
+#endif
 };
 
 enum RicTimers {
@@ -124,6 +134,35 @@ enum RicBlueprints {
     BP_SKID_SMOKE_2,
     BP_SKID_SMOKE_3,
     BP_TELEPORT,
+#if defined(MOD_MARIA_SAT)
+    // Saturn Maria's own blueprints (MARIA.PRG 79-104; mar_attacks.h)
+    BP_MAR_SHOT, // 79 Square: her shot (060B9404)
+    BP_MAR_KICK, // 80 Triangle: her kick hitbox (060AD0E8)
+    BP_MAR_DIVE, // 81 dive kick hitbox (060AD248)
+    BP_MAR_82,
+    BP_MAR_KNUCKLE,  // 83 the command specials (mar_specials.h)
+    BP_MAR_GENBU,    // 84
+    BP_MAR_BYAKKO,   // 85
+    BP_MAR_SEIRYU,   // 86
+    BP_MAR_SUZAKU,   // 87
+    BP_MAR_BEAST,    // 88 one guardian beast (params: 1-4)
+    BP_MAR_FLAME,    // 89
+    BP_MAR_DRAGON,   // 90 (params: segment)
+    BP_MAR_STAR,     // 91 (params: frames to wait)
+    BP_MAR_TRAIL,    // 92 (params: frame)
+    BP_MAR_CHARGE_1, // 93 charged shot level 1 (060B9B88)
+    BP_MAR_CHARGE_2, // 94 level 2 (060B9D88) and its trail
+    BP_MAR_CHARGE_3, // 95 level 3, the laser (060B96C0)
+    BP_MAR_SPARK,    // 96 the laser's sparks (060B99A8)
+    BP_MAR_97,
+    BP_MAR_ASH,       // 98 the puff a vibhuti throw leaves (060B18C8)
+    BP_MAR_CHARGED,   // 99 fully charged (060BD150)
+    BP_MAR_AURA,      // 100 its diamonds (060BD244)
+    BP_MAR_COUNTDOWN, // 101 Four Beasts countdown
+    BP_MAR_BEASTS,    // 102 Four Beasts
+    BP_MAR_103,
+    BP_MAR_104,
+#endif
     NUM_BLUEPRINTS,
 };
 

@@ -15,6 +15,20 @@ void RicSetInit(s32 step_s) {
 }
 
 void RicSetCrouch(s32 kind, s32 velocityX) {
+#if defined(MOD_MARIA_SAT)
+    // Saturn 060A9194: her crouch animations; unk44 reset
+    RicSetStep(PL_S_CROUCH);
+    g_Player.unk44 = 0;
+    PLAYER.velocityX = velocityX;
+    PLAYER.velocityY = 0;
+    if (kind == 1) {
+        PLAYER.step_s = 4;
+    }
+    if (kind == 2) {
+        PLAYER.step_s = 1;
+    }
+    RicSetAnimation(kind == 3 ? ric_anim_crouch_from_stand2 : ric_anim_crouch);
+#else
     RicSetStep(PL_S_CROUCH);
     RicSetAnimation(ric_anim_crouch);
     PLAYER.velocityX = velocityX;
@@ -31,6 +45,7 @@ void RicSetCrouch(s32 kind, s32 velocityX) {
         PLAYER.anim = ric_anim_land_from_air_run;
         PLAYER.step_s = 4;
     }
+#endif
 }
 
 // Corresponding DRA function is func_8010E570 (much more complex)
@@ -39,6 +54,14 @@ void RicSetStand(s32 velocityX) {
     PLAYER.velocityY = 0;
     g_Player.unk44 = 0;
     RicSetStep(PL_S_STAND);
+#if defined(MOD_MARIA_SAT)
+    // Saturn 060A9210: at a ledge (IN_AIR_OR_EDGE) her balancing pose,
+    // elsewhere her idle (hands at the waist)
+    if (g_Player.vram_flag & IN_AIR_OR_EDGE) {
+        RicSetAnimation(mar_anim_stand_edge);
+        return;
+    }
+#endif
     RicSetAnimation(ric_anim_stand);
 }
 
@@ -125,7 +148,11 @@ void RicSetJump(void) {
             RicSetSpeedX(FIX(2.25));
             g_Player.unk44 = 0x10;
         } else {
+#if defined(MOD_MARIA_SAT)
+            RicSetSpeedX(FIX(1.275));
+#else
             RicSetSpeedX(FIX(1.25));
+#endif
             g_Player.unk44 = 0;
         }
     } else {
@@ -134,6 +161,10 @@ void RicSetJump(void) {
         g_Player.unk44 = 4;
     }
     RicSetStep(PL_S_JUMP);
+#if defined(MOD_MARIA_SAT)
+    PLAYER.velocityY = FIX(-4);
+    return;
+#endif
     if (g_IsPrologueStage) {
         PLAYER.velocityY = FIX(-4.6875);
     } else {
@@ -141,16 +172,34 @@ void RicSetJump(void) {
     }
 }
 
+#if defined(MOD_MARIA_SAT)
+#include "../../mods/sotn-ultimate/src/maria_saturn/pl_setstep_mod_double_jump.h"
+#endif
+
 void RicSetHighJump(void) {
     RicSetStep(PL_S_HIGHJUMP);
     PLAYER.velocityX = 0;
+#if defined(MOD_MARIA_SAT)
+    // Saturn 060A9608: holding a direction makes it her diagonal uppercut
+    // (Saturn 4.78 / 1.59 px, x 4/5)
+    if (RicCheckFacing()) {
+        RicSetSpeedX(FIX(3.83));
+        RicSetAnimation(mar_anim_uppercut_diag);
+    } else {
+        RicSetSpeedX(FIX(1.27));
+        RicSetAnimation(ric_anim_high_jump);
+    }
+    PLAYER.velocityY = FIX(-7.5);
+    g_Player.high_jump_timer = 0;
+#else
     RicSetSpeedX(FIX(1.25));
     PLAYER.velocityY = FIX(-7.5);
     g_Player.high_jump_timer = 0;
     RicSetAnimation(ric_anim_high_jump);
+#endif
     func_8015CC28();
     RicCreateEntFactoryFromEntity(g_CurrentEntity, BP_HIGH_JUMP, 0);
-    g_api.PlaySfx(SFX_VO_RIC_ATTACK_C);
+    g_api.PlaySfx(RIC_OR_MAR(SFX_VO_RIC_ATTACK_C, MAR_SFX_ATK_B));
     g_Player.timers[PL_T_12] = 4;
     if (g_Player.unk72) {
         PLAYER.velocityY = 0;
@@ -221,6 +270,38 @@ s32 RicDoSubweapon() {
 
     RicCreateEntFactoryFromEntity(g_CurrentEntity, subweapon.blueprintNum, 0);
     g_Player.timers[PL_T_10] = 4;
+#if defined(MOD_MARIA_SAT)
+    {
+        // Saturn 060A973C: the dagger (and Agunea) thrown as Richter does,
+        // every other sub-weapon with her own throw
+        AnimationFrame* anim;
+
+        if (subweaponId == PL_W_DAGGER || subweaponId == PL_W_AGUNEA) {
+            anim = g_Player.vram_flag & 0x20 ? D_80155638 : D_801555E8;
+        } else {
+            anim =
+                g_Player.vram_flag & 0x20 ? mar_anim_throw_b : mar_anim_throw;
+        }
+        switch (PLAYER.step) {
+        case PL_S_RUN:
+            PLAYER.step = PL_S_STAND;
+            RicCreateEntFactoryFromEntity(g_CurrentEntity, BP_SKID_SMOKE, 0);
+            RicSetAnimation(anim);
+            break;
+        case PL_S_STAND:
+        case PL_S_WALK:
+        case PL_S_CROUCH:
+            PLAYER.step = PL_S_STAND;
+            RicSetAnimation(anim);
+            break;
+        case PL_S_FALL:
+        case PL_S_JUMP:
+            PLAYER.step = PL_S_JUMP;
+            RicSetAnimation(D_80155638);
+            break;
+        }
+    }
+#else
     switch (PLAYER.step) {
     case PL_S_RUN:
         PLAYER.step = PL_S_STAND;
@@ -239,6 +320,7 @@ s32 RicDoSubweapon() {
         RicSetAnimation(D_80155638);
         break;
     }
+#endif
     g_Player.unk46 = 3;
     PLAYER.step_s = 0x42;
     g_Player.timers[PL_T_10] = 4;
@@ -246,6 +328,12 @@ s32 RicDoSubweapon() {
 }
 
 bool RicDoAttack(void) {
+#if defined(MOD_MARIA_SAT)
+    // Saturn port: Maria has no whip; Square is her shot (Saturn 060A9990,
+    // mar_attacks.h)
+    return MarDoAttack(0);
+}
+#else
     s32 i;
     s16 poisoned;
     s16 sfxGrunt;
@@ -318,6 +406,7 @@ bool RicDoAttack(void) {
     }
     return false;
 }
+#endif
 
 bool RicDoCrash(void) {
     SubweaponDef subWpn;
@@ -435,10 +524,16 @@ void RicSetSlide(void) {
     RicSetStep(PL_S_SLIDE);
     RicSetAnimation(D_80155750);
     g_CurrentEntity->velocityY = 0;
+#if defined(MOD_MARIA_SAT)
+    // Saturn 060A9D10: 6.625 Saturn, with skid dust
+    RicSetSpeedX(FIX(5.3));
+    RicCreateEntFactoryFromEntity(g_CurrentEntity, BP_SKID_SMOKE, 0);
+#else
     RicSetSpeedX(FIX(5.5));
+#endif
     func_8015CC28();
     RicCreateEntFactoryFromEntity(g_CurrentEntity, BP_25, 0);
-    g_api.PlaySfx(SFX_RIC_SLIDE_SKID);
+    g_api.PlaySfx(RIC_OR_MAR(SFX_RIC_SLIDE_SKID, SFX_SCRAPE_C));
     g_Player.timers[PL_T_12] = 4;
 }
 
@@ -455,6 +550,7 @@ void RicSetSlideKick(void) {
     RicCreateEntFactoryFromEntity(g_CurrentEntity, BP_31, 0);
 }
 
+#if !defined(MOD_MARIA_SAT)
 void RicSetBladeDash(void) {
     RicSetStep(PL_S_BLADEDASH);
     RicSetAnimation(ric_anim_blade_dash);
@@ -464,6 +560,10 @@ void RicSetBladeDash(void) {
     g_Player.timers[PL_T_12] = 4;
     RicCreateEntFactoryFromEntity(g_CurrentEntity, BP_BLADE_DASH, 0);
     func_8015CC28();
-    g_api.PlaySfx(SFX_VO_RIC_ATTACK_C);
+    g_api.PlaySfx(RIC_OR_MAR(SFX_VO_RIC_ATTACK_C, MAR_SFX_KICK));
     g_api.PlaySfx(SFX_RIC_SLIDE_SKID);
 }
+#else
+// not reachable by the Saturn Maria (MARIA.BIN)
+void RicSetBladeDash(void) {}
+#endif

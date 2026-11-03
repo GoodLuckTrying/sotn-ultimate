@@ -45,6 +45,11 @@ bool RicCheckInput(s32 checks) {
     }
     if (PLAYER.velocityY >= 0) {
         if ((checks & CHECK_GROUND) && (g_Player.vram_flag & TOUCHING_GROUND)) {
+#if defined(MOD_MARIA_SAT)
+            // Saturn 060AAA68: her landings (mar_attacks.h)
+            MarLand();
+            return true;
+#else
             switch (g_Player.unk46) {
             case 0:
             default:
@@ -131,6 +136,7 @@ bool RicCheckInput(s32 checks) {
                 g_Player.unk44 = 0;
                 return true;
             }
+#endif
         } else if (checks & CHECK_GROUND_AFTER_HIT &&
                    (g_Player.vram_flag & TOUCHING_GROUND)) {
             RicSetCrouch(1, PLAYER.velocityX);
@@ -173,10 +179,14 @@ bool RicCheckInput(s32 checks) {
     if (g_Player.unk46) {
         return false;
     }
+#if !defined(MOD_MARIA_SAT)
+    // (the Saturn Maria has no item crash: 060A9CE8 is a stub; Triangle is
+    // her kick, below)
     if (checks & CHECK_CRASH && (g_Player.padTapped & PAD_TRIANGLE) &&
         RicDoCrash()) {
         return true;
     }
+#endif
     if (checks & CHECK_SLIDE &&
         !(PLAYER.facingLeft == 0 &&
           g_Player.colFloor[2].effects & EFFECT_UNK_8000) &&
@@ -192,14 +202,48 @@ bool RicCheckInput(s32 checks) {
         RicSetJump();
         return true;
     }
+#if defined(MOD_MARIA_SAT)
+    if (checks & CHECK_DOUBLE_JUMP && (g_Player.padTapped & PAD_CROSS) &&
+        (g_Player.unk44 & 0x101) != 0x101) {
+        MarSetDoubleJump();
+        return true;
+    }
+    // Saturn 060AAA68: Square = her shot, Triangle = her kick, releasing a
+    // held Square = the charged shot (mar_attacks.h)
+    if (checks & CHECK_ATTACK) {
+        if (g_Player.padTapped & PAD_SQUARE) {
+            if (MarDoAttack(0)) {
+                return true;
+            }
+        } else if (g_Player.padTapped & PAD_TRIANGLE) {
+            MarDoKick();
+            return true;
+        } else if ((g_Player.padHeld ^ g_Player.padPressed) & g_Player.padHeld &
+                   PAD_SQUARE) {
+            if (MarDoAttack(1)) {
+                return true;
+            }
+        }
+    }
+#else
     if (checks & CHECK_ATTACK && (g_Player.padTapped & PAD_SQUARE) &&
         RicDoAttack()) {
         return true;
     }
+#endif
     if (checks & CHECK_CROUCH && (g_Player.padPressed & PAD_DOWN)) {
         RicSetCrouch(2, 0);
         return true;
     }
+#if defined(MOD_MARIA_SAT)
+    // Saturn 060AAA68's last check: R (PS1 R1), her backdash, unless one
+    // is under way
+    if (checks & CHECK_BACKDASH && PLAYER.anim != mar_anim_backdash &&
+        (g_Player.padTapped & PAD_R1)) {
+        MarSetBackdash();
+        return true;
+    }
+#endif
     return false;
 }
 

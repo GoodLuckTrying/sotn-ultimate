@@ -47,7 +47,8 @@ void RicStepStand(void) {
     }
 
     if (!RicCheckInput(CHECK_FALL | CHECK_FACING | CHECK_JUMP | CHECK_CRASH |
-                       CHECK_ATTACK | CHECK_CROUCH | CHECK_SLIDE)) {
+                       CHECK_ATTACK | CHECK_CROUCH | CHECK_SLIDE |
+                       RIC_OR_MAR(0, CHECK_BACKDASH))) {
         RicDecelerateX(FIX(0.125));
         switch (PLAYER.step_s) {
         case 0:
@@ -67,6 +68,53 @@ void RicStepStand(void) {
                 RicSetStand(0);
             }
             break;
+#if defined(MOD_MARIA_SAT)
+        // Saturn 060A66C8: her backdash (MarSetBackdash), slowed down by the
+        // deceleration above; a direction after pose 3 turns it into a walk
+        case 3:
+            if (PLAYER.poseTimer >= 0) {
+                if (PLAYER.pose > 3 && RicCheckFacing()) {
+                    RicSetWalk(0);
+                }
+                break;
+            }
+            if (g_Player.padPressed & PAD_UP) {
+                RicSetAnimation(ric_anim_press_up);
+                PLAYER.step_s = 1;
+                break;
+            }
+            RicSetStand(0);
+            RicSetAnimation(g_Player.vram_flag & 0x20 ? mar_anim_backdash_end_b
+                                                      : mar_anim_backdash_end);
+            break;
+        // Saturn 060A66C8: her shot (0x40), kick (0x41), subweapon (0x42);
+        // she can act again once the pose passes 6 (3 for a subweapon)
+        case 0x40:
+        case 0x41:
+        case 0x42:
+            DisableAfterImage(1, 1);
+            if (PLAYER.poseTimer >= 0) {
+                if (PLAYER.pose <= 2) {
+                    RicCheckFacing();
+                } else if (PLAYER.step_s == 0x40 && PLAYER.pose > 6) {
+                    g_Player.unk46 = 0;
+                } else if (PLAYER.step_s == 0x42 && PLAYER.pose > 3) {
+                    g_Player.unk46 = 0;
+                }
+                break;
+            }
+            g_Player.unk46 = 0;
+            facing = PLAYER.step_s;
+            RicSetStand(0);
+            if (facing == 0x40) {
+                RicSetAnimation(g_Player.vram_flag & 0x20 ? mar_anim_atk_end_b
+                                                          : mar_anim_atk_end);
+            } else if (facing == 0x41) {
+                RicSetAnimation(g_Player.vram_flag & 0x20 ? mar_anim_kick_end_b
+                                                          : mar_anim_kick_end);
+            }
+            break;
+#else
         case 64:
             DisableAfterImage(1, 1);
             if (PLAYER.pose < 3) {
@@ -109,13 +157,15 @@ void RicStepStand(void) {
                 RicSetStand(0);
             }
             break;
+#endif
         }
     }
 }
 
 void RicStepWalk(void) {
-    if (!RicCheckInput(CHECK_FALL | CHECK_FACING | CHECK_JUMP | CHECK_CRASH |
-                       CHECK_ATTACK | CHECK_CROUCH)) {
+    if (!RicCheckInput(
+            CHECK_FALL | CHECK_FACING | CHECK_JUMP | CHECK_CRASH |
+            CHECK_ATTACK | CHECK_CROUCH | RIC_OR_MAR(0, CHECK_BACKDASH))) {
         RicDecelerateX(FIX(0.125));
         if (RicCheckFacing() == 0) {
             RicSetStand(0);
@@ -139,8 +189,9 @@ void RicStepRun(void) {
 #endif
     g_Player.timers[PL_T_8] = 8;
     g_Player.timers[PL_T_CURSE] = 8;
-    if (!RicCheckInput(CHECK_FALL | CHECK_FACING | CHECK_JUMP | CHECK_CRASH |
-                       CHECK_ATTACK | CHECK_CROUCH)) {
+    if (!RicCheckInput(
+            CHECK_FALL | CHECK_FACING | CHECK_JUMP | CHECK_CRASH |
+            CHECK_ATTACK | CHECK_CROUCH | RIC_OR_MAR(0, CHECK_BACKDASH))) {
         RicDecelerateX(FIX(0.125));
         if (RicCheckFacing() == 0) {
             RicSetStand(0);
@@ -177,6 +228,92 @@ void RicStepJump(void) {
         PLAYER.velocityY = FIX(-0.25);
         g_Player.unk44 |= 0x20;
     }
+#if defined(MOD_MARIA_SAT)
+    if (RicCheckInput(CHECK_GROUND | CHECK_FACING | CHECK_ATTACK |
+                      CHECK_GRAVITY_JUMP | CHECK_DOUBLE_JUMP)) {
+        return;
+    }
+    // Saturn 060A6B90
+    facing = 0;
+    switch (PLAYER.step_s) {
+    case 0:
+        RicDecelerateX(FIX(0.0625));
+        facing = RicCheckFacing();
+        if (facing) {
+            if (g_Player.unk44 & 0x10) {
+                RicSetSpeedX(FIX(2.25));
+            } else if (g_Player.unk44 & 1) {
+                RicSetSpeedX(FIX(1.25));
+            } else {
+                RicSetSpeedX(FIX(1.275));
+            }
+            g_Player.unk44 &= ~4;
+        } else {
+            g_Player.unk44 &= ~0x10;
+        }
+        if (PLAYER.velocityY > 0 && PLAYER.anim != D_80155534) {
+            RicSetAnimation(D_80155534);
+        }
+        break;
+    case 0x40: // her shot / kick in the air (mar_attacks.h)
+    case 0x41:
+        RicDecelerateX(FIX(0.0625));
+        DisableAfterImage(1, 1);
+        if (PLAYER.pose <= (PLAYER.step_s == 0x40 ? 2 : 1)) {
+            facing = RicCheckFacing();
+            if (facing) {
+                if (g_Player.unk44 & 0x10) {
+                    RicSetSpeedX(FIX(2.25));
+                } else {
+                    RicSetSpeedX(FIX(1.275));
+                }
+                g_Player.unk44 &= ~4;
+            } else {
+                g_Player.unk44 &= ~0x10;
+            }
+        } else if (((g_Player.padPressed & PAD_RIGHT) && !PLAYER.facingLeft) ||
+                   ((g_Player.padPressed & PAD_LEFT) && PLAYER.facingLeft)) {
+            RicSetSpeedX(FIX(1.275));
+            g_Player.unk44 &= ~4;
+        } else {
+            g_Player.unk44 &= ~0x10;
+        }
+        if (PLAYER.poseTimer < 0) {
+            g_Player.unk46 = 0;
+            PLAYER.step_s = 0;
+            RicSetAnimation(D_80155534);
+        }
+        break;
+    case 0x42:
+        DisableAfterImage(1, 1);
+        if (PLAYER.poseTimer < 0) {
+            g_Player.unk46 = 0;
+            PLAYER.step_s = 0;
+            RicSetAnimation(D_80155534);
+        }
+        break;
+    case 0x70: // the dive kick: a hit bounces her up
+        if (g_Player.vram_flag & TOUCHING_GROUND) {
+            // on the ground: land as her CHECK_GROUND does (060AAA68)
+            MarLand();
+            return;
+        }
+        RicDecelerateX(FIX(0.0625));
+        if (g_Player.unk44 & 0x80) {
+            RicSetJump();
+            if (!(g_Player.padPressed & PAD_CROSS)) {
+                PLAYER.velocityY = FIX(-4.75);
+            }
+            g_Player.unk44 |= 0x40;
+        }
+        break;
+    }
+    if (PLAYER.step_s == 0 && (g_Player.unk44 & 0x101) == 0x101 &&
+        (g_Player.padPressed & PAD_DOWN) && (g_Player.padTapped & PAD_CROSS)) {
+        MarSetDiveKick(facing);
+    }
+    return;
+#endif
     if (RicCheckInput(
             CHECK_GROUND | CHECK_FACING | CHECK_ATTACK | CHECK_GRAVITY_JUMP)) {
         return;
@@ -298,10 +435,17 @@ void RicStepJump(void) {
 }
 
 void RicStepFall(void) {
+#if defined(MOD_MARIA_SAT)
+    if (RicCheckInput(CHECK_GROUND | CHECK_FACING | CHECK_ATTACK |
+                      CHECK_GRAVITY_FALL | CHECK_DOUBLE_JUMP)) {
+        return;
+    }
+#else
     if (RicCheckInput(
             CHECK_GROUND | CHECK_FACING | CHECK_ATTACK | CHECK_GRAVITY_FALL)) {
         return;
     }
+#endif
     RicDecelerateX(FIX(1. / 16));
     switch (PLAYER.step_s) {
     case 0:
@@ -335,10 +479,13 @@ void RicStepCrouch(void) {
         (!g_Player.unk72)) {
         RicSetJump(1);
         return;
-    } else if (!g_Player.unk72 && !g_Player.unk46 &&
-               (g_Player.padTapped & PAD_TRIANGLE) && RicDoCrash()) {
+    }
+#if !defined(MOD_MARIA_SAT) // her Triangle is the kick (CHECK_ATTACK)
+    else if (!g_Player.unk72 && !g_Player.unk46 &&
+             (g_Player.padTapped & PAD_TRIANGLE) && RicDoCrash()) {
         return;
     }
+#endif
     RicDecelerateX(FIX(0.125));
     switch (PLAYER.step_s) {
     case 0x0:
@@ -371,17 +518,31 @@ void RicStepCrouch(void) {
                 RicSetWalk(0);
                 return;
             }
+#if defined(MOD_MARIA_SAT)
+            // Saturn 060A714C: her stand-up starts from its first pose. (The
+            // PS1's "pose = 2 - pose" mirrors Richter's 3-pose crouch; her
+            // crouch has 10 poses, so it went negative: a garbage frame,
+            // whose garbage size overwrote the HUD's VRAM)
+            RicSetAnimation(D_801554E0);
+            PLAYER.step_s = 2;
+            PLAYER.poseTimer = 1;
+#else
             PLAYER.anim = D_801554E0;
             PLAYER.step_s = 2;
             PLAYER.pose = 2 - PLAYER.pose;
             PLAYER.poseTimer = 1;
+#endif
             break;
         }
     case 0x4:
         if (PLAYER.poseTimer != -1) {
             return;
         }
+#if defined(MOD_MARIA_SAT)
+        RicSetAnimation(ric_anim_crouch_from_stand2); // Saturn: 060C2AA8
+#else
         RicSetAnimation(ric_anim_crouch);
+#endif
         PLAYER.step_s = 0;
         break;
     case 0x2:
@@ -398,11 +559,28 @@ void RicStepCrouch(void) {
         break;
     case 0x3:
         if (PLAYER.poseTimer < 0) {
+#if defined(MOD_MARIA_SAT)
+            RicSetAnimation(ric_anim_crouch_from_stand2); // Saturn: 060C2AA8
+#else
             RicSetAnimation(ric_anim_crouch);
+#endif
             PLAYER.step_s = 0;
             return;
         }
         break;
+#if defined(MOD_MARIA_SAT)
+    // Saturn 060A714C: her shot / kick crouching
+    case 0x40:
+    case 0x41:
+        DisableAfterImage(1, 1);
+        if (PLAYER.poseTimer < 0) {
+            g_Player.unk46 = 0;
+            RicSetAnimation(PLAYER.step_s == 0x40 ? ric_anim_crouch_from_stand2
+                                                  : mar_anim_kick_crouch_end);
+            PLAYER.step_s = 0;
+        }
+        break;
+#else
     case 0x40:
         DisableAfterImage(1, 1);
         if (PLAYER.pose < 3) {
@@ -435,6 +613,7 @@ void RicStepCrouch(void) {
             RicSetAnimation(ric_anim_crouch);
         }
         break;
+#endif
     }
 }
 
@@ -525,7 +704,7 @@ void RicStepHit(s32 damageEffect, u32 damageKind, s16 prevStep, s32 prevStepS) {
             RicCreateEntFactoryFromEntity(
                 g_CurrentEntity, FACTORY(BP_RIC_BLINK, 0x46), 0);
             g_Player.timers[PL_T_2] = 6;
-            g_api.PlaySfx(SFX_VO_RIC_PAIN_C);
+            g_api.PlaySfx(RIC_OR_MAR(SFX_VO_RIC_PAIN_C, MAR_SFX_HURT_A));
             break;
         } else {
             if (damageEffect & ELEMENT_ICE) {
@@ -552,7 +731,8 @@ void RicStepHit(s32 damageEffect, u32 damageKind, s16 prevStep, s32 prevStepS) {
                     PLAYER.anim = D_80155704;
                     RicCreateEntFactoryFromEntity(
                         g_CurrentEntity, BP_SKID_SMOKE, 0);
-                    g_api.PlaySfx(SFX_VO_RIC_PAIN_C);
+                    g_api.PlaySfx(
+                        RIC_OR_MAR(SFX_VO_RIC_PAIN_C, MAR_SFX_HURT_C));
                     break;
                 case PL_S_JUMP:
                 case PL_S_FALL:
@@ -586,7 +766,8 @@ void RicStepHit(s32 damageEffect, u32 damageKind, s16 prevStep, s32 prevStepS) {
                     func_8015CAAC(FIX(-1.25));
                     PLAYER.step_s = 1;
                     PLAYER.anim = ric_anim_stun;
-                    g_api.PlaySfx(SFX_VO_RIC_PAIN_B);
+                    g_api.PlaySfx(
+                        RIC_OR_MAR(SFX_VO_RIC_PAIN_B, MAR_SFX_HURT_B));
                     break;
                 case PL_S_CROUCH:
                     PLAYER.velocityY = 0;
@@ -603,7 +784,8 @@ void RicStepHit(s32 damageEffect, u32 damageKind, s16 prevStep, s32 prevStepS) {
                     func_8015CAAC(FIX(-1.25));
                     PLAYER.step_s = 1;
                     PLAYER.anim = ric_anim_stun;
-                    g_api.PlaySfx(SFX_VO_RIC_PAIN_B);
+                    g_api.PlaySfx(
+                        RIC_OR_MAR(SFX_VO_RIC_PAIN_B, MAR_SFX_HURT_B));
                     break;
                 }
                 break;
@@ -863,7 +1045,7 @@ void RicStepBossGrab(void) {
             if (g_Player.grabReactionEffect == GRAB_REACTION_NORMAL) {
                 g_Player.timers[PL_T_2] = 4;
                 g_Player.damagePalette = PAL_FLAG(PAL_CC_RED_EFFECT_A);
-                g_api.PlaySfx(SFX_VO_RIC_PAIN_C);
+                g_api.PlaySfx(RIC_OR_MAR(SFX_VO_RIC_PAIN_C, MAR_SFX_GRAB_B));
             }
             if (g_Player.grabReactionEffect == GRAB_REACTION_STONE) {
             }
@@ -873,7 +1055,7 @@ void RicStepBossGrab(void) {
             PLAYER.step_s = 2;
             g_Player.grabState = GRAB_NONE;
             g_Player.damageTaken = g_Player.grabDamage;
-            g_api.PlaySfx(SFX_VO_RIC_PAIN_D);
+            g_api.PlaySfx(RIC_OR_MAR(SFX_VO_RIC_PAIN_D, MAR_SFX_GRAB_C));
         } else if (g_Player.grabState == GRAB_NONE) {
             PLAYER.step = PL_S_HIT;
             PLAYER.step_s = 1;
@@ -1075,6 +1257,7 @@ void RicStepStandInAir(void) {
     }
 }
 
+#if !defined(MOD_MARIA_SAT)
 void RicStepEnableFlameWhip(void) {
     if (PLAYER.animCurFrame == 181 && PLAYER.poseTimer == 1) {
         RicCreateEntFactoryFromEntity(g_CurrentEntity, BP_35, 0);
@@ -1097,7 +1280,12 @@ void RicStepEnableFlameWhip(void) {
         g_Player.timers[PL_T_POISON] = 0x800;
     }
 }
+#else
+// not reachable by the Saturn Maria (MARIA.BIN)
+void RicStepEnableFlameWhip(void) {}
+#endif
 
+#if !defined(MOD_MARIA_SAT)
 void RicStepHydrostorm(void) {
     if (PLAYER.poseTimer < 0) {
         RicSetStand(0);
@@ -1109,7 +1297,12 @@ void RicStepHydrostorm(void) {
         g_Player.unk46 = 0;
     }
 }
+#else
+// not reachable by the Saturn Maria (MARIA.BIN)
+void RicStepHydrostorm(void) {}
+#endif
 
+#if !defined(MOD_MARIA_SAT)
 void RicStepGenericSubwpnCrash(void) {
     if (g_Player.unk4E) {
         RicSetStand(0);
@@ -1121,12 +1314,17 @@ void RicStepGenericSubwpnCrash(void) {
         g_Player.unk46 = 0;
     }
 }
+#else
+// not reachable by the Saturn Maria (MARIA.BIN)
+void RicStepGenericSubwpnCrash(void) {}
+#endif
 
 #if defined(VERSION_PSP)
 extern s32 throw_dagger_timer;
 #else
 static s32 throw_dagger_timer;
 #endif
+#if !defined(MOD_MARIA_SAT)
 void RicStepThrowDaggers(void) {
     if (PLAYER.step_s == 0) {
         throw_dagger_timer = 0x200;
@@ -1152,6 +1350,10 @@ void RicStepThrowDaggers(void) {
         throw_dagger_timer = 0;
     }
 }
+#else
+// not reachable by the Saturn Maria (MARIA.BIN)
+void RicStepThrowDaggers(void) {}
+#endif
 
 // This happens when he dies in prologue and gets saved by Maria.
 #if defined(VERSION_PSP)
@@ -1159,6 +1361,7 @@ extern s32 dead_prologue_timer;
 #else
 static s32 dead_prologue_timer;
 #endif
+#if !defined(MOD_MARIA_SAT)
 void RicStepDeadPrologue(void) {
     switch (PLAYER.step_s) {
     case 0:
@@ -1277,7 +1480,69 @@ void RicStepDeadPrologue(void) {
         break;
     }
 }
+#else
+// not reachable by the Saturn Maria (MARIA.BIN)
+void RicStepDeadPrologue(void) {}
+#endif
 
+#if defined(MOD_MARIA_SAT)
+// Saturn 060A8860: her slide ends in a roll (its animation group 0, or at
+// once on a wall, a slope or the screen edge, at a reduced speed, with
+// dust); no slide kick from it (only falling, and sliding again late in
+// the roll)
+void RicStepSlide(void) {
+    s32 blocked = 0;
+
+    if (!PLAYER.facingLeft && (g_Player.vram_flag & TOUCHING_R_WALL)) {
+        blocked = 1;
+    }
+    if (PLAYER.facingLeft && (g_Player.vram_flag & TOUCHING_L_WALL)) {
+        blocked = 1;
+    }
+    if (PLAYER.posX.i.hi > 249 && !PLAYER.facingLeft) {
+        blocked = 1;
+    }
+    if (PLAYER.posX.i.hi <= 6 && PLAYER.facingLeft) {
+        blocked = 1;
+    }
+    if ((!PLAYER.facingLeft &&
+         (g_Player.colFloor[2].effects & EFFECT_UNK_8000)) ||
+        (PLAYER.facingLeft &&
+         (g_Player.colFloor[3].effects & EFFECT_UNK_8000))) {
+        blocked = 1;
+    }
+    if (blocked && PLAYER.anim != mar_anim_roll) {
+        RicSetAnimation(mar_anim_roll);
+        if (PLAYER.velocityX > FIX(0.8)) {
+            PLAYER.velocityX = FIX(1.6);
+        }
+        if (PLAYER.velocityX < FIX(-0.8)) {
+            PLAYER.velocityX = FIX(-1.6);
+        }
+        RicCreateEntFactoryFromEntity(g_CurrentEntity, BP_SKID_SMOKE, 0);
+    }
+    if (PLAYER.anim == D_80155750) {
+        if (RicCheckInput(CHECK_FALL | CHECK_CRASH)) {
+            return;
+        }
+    } else if (PLAYER.anim == mar_anim_roll && PLAYER.pose > 1) {
+        if (RicCheckInput(
+                CHECK_FALL | CHECK_FACING | CHECK_CRASH | CHECK_SLIDE)) {
+            return;
+        }
+    }
+    RicDecelerateX(FIX(0.125));
+    if (PLAYER.step_s == 0) {
+        if (PLAYER.anim == mar_anim_roll && PLAYER.pose <= 3 &&
+            !(g_GameTimer & 3)) {
+            RicCreateEntFactoryFromEntity(g_CurrentEntity, BP_SKID_SMOKE, 0);
+        }
+        if (PLAYER.poseTimer < 0) {
+            RicSetCrouch(3, PLAYER.velocityX);
+        }
+    }
+}
+#else
 void RicStepSlide(void) {
     s32 isTouchingGround = 0;
 
@@ -1346,6 +1611,7 @@ void RicStepSlide(void) {
         break;
     }
 }
+#endif
 
 // same as DRA/func_80115C50
 static void func_8015BB80(void) {
@@ -1445,7 +1711,13 @@ void RicStepTeleport(void) {
 void RicStepSlideKick(void) {
     // If we are pressing square while in contact with an enemy
     // (as detected in g_Player.unk44), we will bounce back.
+#if defined(MOD_MARIA_SAT)
+    // Saturn 060A8C14: she bounces back off an enemy unless the kick button
+    // (Saturn C, PS1 Triangle) is held, which lets her slide through
+    if (!(g_Player.padPressed & PAD_TRIANGLE) && g_Player.unk44 & 0x80) {
+#else
     if (g_Player.padPressed & PAD_SQUARE && g_Player.unk44 & 0x80) {
+#endif
         PLAYER.step = PL_S_JUMP;
         RicSetAnimation(D_8015555C);
         RicSetSpeedX(FIX(-1.5));
@@ -1505,6 +1777,7 @@ void RicStepSlideKick(void) {
     }
 }
 
+#if !defined(MOD_MARIA_SAT)
 void RicStepBladeDash(void) {
     RicDecelerateX(0x1C00);
 
@@ -1527,6 +1800,10 @@ void RicStepBladeDash(void) {
         }
     }
 }
+#else
+// not reachable by the Saturn Maria (MARIA.BIN)
+void RicStepBladeDash(void) {}
+#endif
 
 void RicStepHighJump(void) {
     bool loadAnim;

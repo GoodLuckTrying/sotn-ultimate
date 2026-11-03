@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "ric.h"
 
+#if defined(MOD_MARIA_SAT)
+// Saturn port: the Saturn Maria's animations and hitboxes under Richter's
+// names (mods/sotn-ultimate/tools/gen_mar_assets.py)
+#include "mar_anims.h"
+#else
+
 AnimationFrame* D_8015538C[] = {ric_anim_stand, ric_anim_stand};
 AnimationFrame ric_anim_press_up[] = {POSE(64, 38, 1), POSE_LOOP(0)};
 AnimationFrame ric_anim_stop_run[] = {
@@ -143,3 +149,4 @@ FrameProperty D_80155964[] = {
     0xFE, 0x06, 0x08, 0x08, 0xFA, 0x06, 0x07, 0x11, 0x04, 0x06, 0x0A, 0x09,
     0xFD, 0x03, 0x09, 0x14, 0x00, 0x08, 0x08, 0x08, 0xFF, 0x0A, 0x0C, 0x07,
 };
+#endif

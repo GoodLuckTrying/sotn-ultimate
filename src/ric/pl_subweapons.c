@@ -48,8 +48,15 @@ void RicEntitySubwpnThrownAxe(Entity* self) {
         self->flags = FLAG_POS_CAMERA_LOCKED | FLAG_KEEP_ALIVE_OFFCAMERA |
                       FLAG_HAS_PRIMS | FLAG_UNK_20000;
         self->facingLeft = (PLAYER.facingLeft + 1) & 1;
+#if defined(MOD_MARIA_SAT)
+        // Saturn 060B668C: each of her three axes flies its own arc,
+        // -(2 + rand) px (x 4/5) and -(6 + 2 rand) up
+        RicSetSpeedX(-(FIX(1.6) + (rand() & 0xFFFF) * 4 / 5));
+        self->velocityY = FIX(-6) - (rand() & 0x1FFFF);
+#else
         RicSetSpeedX(FIX(-2));
         self->velocityY = FIX(-6);
+#endif
         if (self->facingLeft) {
             self->ext.subwpnAxe.unk7C = 0x400;
         } else {
@@ -224,6 +231,7 @@ void RicEntitySubwpnThrownAxe(Entity* self) {
 
 // RIC entity #37. Comes from blueprint 41. That's subweapon 20.
 // Subweapon 20 is crash of subweapon 2, which is the axe.
+#if !defined(MOD_MARIA_SAT)
 void RicEntityCrashAxe(Entity* self) {
     Primitive* primFirst;
     Primitive* prim;
@@ -420,6 +428,10 @@ void RicEntityCrashAxe(Entity* self) {
         prim = prim->next;
     }
 }
+#else
+// Maria has no item crash (Saturn 060A9CE8)
+void RicEntityCrashAxe(Entity* self) { DestroyEntity(self); }
+#endif
 
 // RIC Entity #38. Blueprint 43 AND 44.
 // Applies to subweapon 1, and its crash, subweapon 21. Very neat!
@@ -476,7 +488,13 @@ void RicEntitySubwpnKnife(Entity* self) {
             self->posY.i.hi += D_80155E98[D_8017588C & 7];
             D_8017588C++;
         } else {
+#if defined(MOD_MARIA_SAT)
+            // Saturn Maria (060B626C): from her hand, three 3 px apart
+            self->posX.i.hi += self->facingLeft ? -26 : 26;
+            self->posY.i.hi += (self->params & 0xFF) * 3 - 3;
+#else
             self->posY.i.hi -= 9;
+#endif
         }
         prim = &g_PrimBuf[self->primIndex];
         prim->tpage = 0x1C;

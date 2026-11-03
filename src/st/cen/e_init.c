@@ -30,20 +30,20 @@ void EntityUnkId1B(Entity*);
 void EntityMovingElevator(Entity*);
 
 PfnEntityUpdate EntityUpdates[] = {
-    EntityBreakable,       EntityExplosion,
-    EntityPrizeDrop,       EntityDamageDisplay,
-    EntityRedDoor,         EntityIntenseExplosion,
-    EntitySoulStealOrb,    EntityRoomForeground,
-    EntityStageNamePopup,  EntityEquipItemDrop,
-    EntityRelicOrb,        EntityPersistentItemDrop,
-    EntityEnemyBlood,      EntityMessageBox,
+    EntityBreakable,          EntityExplosion,      EntityPrizeDrop,
+    EntityDamageDisplay,      EntityRedDoor,        EntityIntenseExplosion,
+    EntitySoulStealOrb,       EntityRoomForeground, EntityStageNamePopup,
+    EntityEquipItemDrop,      EntityRelicOrb,       EntityPersistentItemDrop,
+    EntityEnemyBlood,         EntityMessageBox,
+#if defined(MOD_MARIA_BOSS) && !defined(MOD_CENP)
+    EntityModMariaBoss,       EntityDummy,
+#else
     EntityDummy,           EntityDummy,
-    EntityBackgroundBlock, EntityLockCamera,
-    EntityUnkId13,         EntityExplosionVariants,
-    EntityGreyPuff,        EntityCutscene,
-    EntityPlatform,        EntityMaria,
-    EntityRoomDarkness,    EntityElevatorStationary,
-    EntityUnkId1B,         EntityMovingElevator,
+#endif
+    EntityBackgroundBlock,    EntityLockCamera,     EntityUnkId13,
+    EntityExplosionVariants,  EntityGreyPuff,       EntityCutscene,
+    EntityPlatform,           EntityMaria,          EntityRoomDarkness,
+    EntityElevatorStationary, EntityUnkId1B,        EntityMovingElevator,
 };
 
 // clang-format off

@@ -11,6 +11,7 @@ static u16 crash_cross_img_data[] = {
     0xD294, 0xCE73, 0xCA52, 0xC631, 0xC210, 0xBDEF, 0xB9CE, 0xB5AD,
     0xB18C, 0xAD6B, 0xA94A, 0xA529, 0xA108, 0x9CE7, 0x98C6, 0x94A5};
 static RECT crash_cross_img_vram = {0x0301, 0x01F8, 0x0030, 0x0001};
+#if !defined(MOD_MARIA_SAT)
 void RicEntitySubwpnCrashCross(Entity* self) {
     s16 psp_s4;
     s16 psp_s3;
@@ -121,9 +122,14 @@ void RicEntitySubwpnCrashCross(Entity* self) {
     prim->priority = self->zPriority;
     g_Player.timers[PL_T_3] = 2;
 }
+#else
+// Maria has no item crash (Saturn 060A9CE8)
+void RicEntitySubwpnCrashCross(Entity* self) { DestroyEntity(self); }
+#endif
 
 // Entity ID #21. Blueprint 22. Called in RicStepDeadPrologue.
 // Creates the white column around Richter when he is revived in the Prologue.
+#if !defined(MOD_MARIA_SAT)
 void RicEntityRevivalColumn(Entity* self) {
     s16 psp_s4;
     s16 psp_s3;
@@ -194,6 +200,10 @@ void RicEntityRevivalColumn(Entity* self) {
     }
     prim->priority = self->zPriority;
 }
+#else
+// not reachable by the Saturn Maria (MARIA.BIN)
+void RicEntityRevivalColumn(Entity* self) { DestroyEntity(self); }
+#endif
 
 static AnimationFrame anim_cross_boomerang[] = {
     POSE(36, 1, 0), POSE(1, 2, 0), POSE(1, 3, 0), POSE(1, 4, 0), POSE(1, 5, 0),

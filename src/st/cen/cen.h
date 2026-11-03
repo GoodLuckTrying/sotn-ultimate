@@ -120,6 +120,10 @@ enum MarEntities {
 void EntityExplosionVariants(Entity* entity);
 void EntityGreyPuff(Entity* entity);
 
+#if defined(MOD_SATURN) && defined(VERSION_US)
+#include "../../../mods/sotn-ultimate/src/maria_saturn/cen_mod_maria_boss.h"
+#endif
+
 /*** Initializers ***/
 extern EInit g_EInitBreakable;
 extern EInit g_EInitObtainable;
@@ -141,11 +145,16 @@ extern ObjInit D_8018125C[];
 
 #include "../../maria/maria_common.h"
 
-#ifdef VERSION_PSP
+#if defined(VERSION_PSP) || defined(MOD_CENP_BOSS)
 enum MarPalette {
     /* 0x812E */ PAL_UNK_812E = 0x812E,
     /* 0x812F */ PAL_UNK_812F,
+#if defined(MOD_CENP_BOSS)
+    // PS1 (BIN/CENP.BIN): the stage palettes the Saturn fight uses in CEN
+    PAL_MARIA = 0x8240,
+#else
     /* 0x8130 */ PAL_MARIA = 0x8130,
+#endif
     /* 0x8131 */ PAL_WPN_OWL,
     /* 0x8132 */ PAL_WPN_TURTLE,
     /* 0x8133 */ PAL_WPN_TURTLE_CRASH,
@@ -170,11 +179,15 @@ enum MarAnimset {
 };
 
 #define MAR_SFX_OFFSET 21
+#include "../../../mods/sotn-ultimate/src/maria_psp/cen_mod_psp_weapons.h"
 #define MARIA g_Entities[STAGE_ENTITY_START]
 #define MARIA_AFTERIMAGE_1 g_Entities[STAGE_ENTITY_START + E_AFTERIMAGE_1]
 #define MARIA_AFTERIMAGE_2 g_Entities[STAGE_ENTITY_START + E_AFTERIMAGE_2]
 #define MARIA_AFTERIMAGE_3 g_Entities[STAGE_ENTITY_START + E_AFTERIMAGE_3]
 extern PlayerState g_Maria;
+#if defined(MOD_CENP_BOSS)
+#include "../../../mods/sotn-ultimate/src/maria_psp/mod_cenp.h"
+#endif
 #endif
 
 #endif

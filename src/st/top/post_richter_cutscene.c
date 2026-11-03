@@ -4,6 +4,11 @@
 extern EInit g_EInitInteractable;
 extern u32 g_CutsceneFlags;
 
+#if defined(MOD_SATURN) && defined(VERSION_US)
+extern u8* richter_sprites[];
+#include "../../../mods/sotn-ultimate/src/richter_saturn/mod_ric2.h"
+#endif
+
 static AnimateEntityFrame D_us_80180DF0[] = {
     {0x02, 0x20}, {0x04, 0x21}, {0x04, 0x22}, {0x04, 0x23}, {0x04, 0x24},
     {0x04, 0x25}, {0x04, 0x26}, {0x04, 0x27}, {0x02, 0x20}, POSE_LOOP(0),
@@ -106,6 +111,9 @@ void func_us_801AD320(Entity* self) {
         self->animCurFrame = 0x11;
         self->unk5A = 0xF;
         self->palette = PAL_FLAG(0x230);
+#if defined(MOD_SATURN) && defined(VERSION_US)
+        ModTopRic2Apply();
+#endif
         break;
     case 1:
         if (g_CutsceneFlags & 4) {

@@ -20,7 +20,7 @@ void EntityMariaDragonAttack(Entity* self) {
     switch (self->step) {
     case 0:
         self->flags = FLAG_KEEP_ALIVE_OFFCAMERA | FLAG_UNK_100000;
-        self->unk5A = 0x55;
+        self->unk5A = MAR_UNK5A_DRAGON;
         self->zPriority = MARIA.zPriority - 8;
         self->palette = PAL_WPN_DRAGON;
         self->animSet = ANIMSET_WPN_DRAGON;
@@ -188,7 +188,7 @@ void EntityMariaDragonCrash(Entity* self) {
     case 0:
         self->flags = FLAG_POS_CAMERA_LOCKED | FLAG_KEEP_ALIVE_OFFCAMERA |
                       FLAG_UNK_100000;
-        self->unk5A = 0x55;
+        self->unk5A = MAR_UNK5A_DRAGON;
         self->zPriority = 0x1C0;
         self->palette = PAL_WPN_DRAGON_CRASH;
         self->animSet = ANIMSET_WPN_DRAGON;
@@ -339,7 +339,7 @@ void EntityMariaDragonCrashBodyPart(Entity* self) {
             return;
         }
         self->flags = FLAG_KEEP_ALIVE_OFFCAMERA | FLAG_HAS_PRIMS;
-        self->unk5A = 0x55;
+        self->unk5A = MAR_UNK5A_DRAGON;
         self->zPriority = 0x1C0;
         self->palette = PAL_WPN_DRAGON_CRASH;
         self->animSet = ANIMSET_WPN_DRAGON;
@@ -368,7 +368,7 @@ void EntityMariaDragonCrashBodyPart(Entity* self) {
         prim = &g_PrimBuf[self->primIndex];
         var_s2 = D_pspeu_092E5900 - 1;
         for (i = 0; i < LEN(D_pspeu_092E5B08); i++) {
-            prim->tpage = 0x15;
+            prim->tpage = MAR_TPAGE(MAR_UNK5A_DRAGON);
             prim->clut = self->palette & 0x3FF;
             prim->priority = self->zPriority;
             if (var_s2 >= 7) {

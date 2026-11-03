@@ -111,7 +111,7 @@ void MarInit(s16 initParam) {
     MARIA_Load();
     g_CurrentEntity = &MARIA;
     InitializeEntity(&g_EInitUnk);
-    g_CurrentEntity->unk5A = 0xC;
+    g_CurrentEntity->unk5A = MAR_UNK5A_BODY;
     MARIA.posX.val = FIX(32);
     MARIA.posY.val = FIX(32);
     MARIA.animSet = ANIMSET_PL_MARIA;
@@ -133,7 +133,7 @@ void MarInit(s16 initParam) {
     g_Maria.vram_flag = g_Maria.unk04 = 1;
     MarSetStand(0);
     MARIA.anim = mar_anim_stand_relax;
-    g_PlayerDraw[5].enableColorBlend = 0;
+    g_PlayerDraw[MAR_PLDRAW_BODY].enableColorBlend = 0;
     MarDebugOff();
 
     for (i = 0; i < LEN(mar_80175958); i++) {
@@ -169,7 +169,7 @@ void MarInit(s16 initParam) {
     for (entity = &MARIA_AFTERIMAGE_1, i = 0; i < 3; i++, entity++) {
         DestroyEntity(entity);
         entity->animSet = ANIMSET_PL_MARIA;
-        entity->unk5A = i + 0xD;
+        entity->unk5A = i + MAR_UNK5A_BODY + 1;
         entity->palette = PAL_MARIA;
         entity->flags = FLAG_UNK_20000 | FLAG_POS_CAMERA_LOCKED;
     }
@@ -438,10 +438,18 @@ static void CheckHighJumpInput(void) {
     }
 }
 
+#if defined(MOD_CENP_BOSS)
+// Saturn port: MarMain only tests these for 0x200 (-> PL_S_11, which has no
+// step code: she froze for the rest of the fight). The PSP's PAL_MARIA is
+// 0x8130; the PS1 build's is 0x8240, which has that bit
+#define MAR_HIT_PAL 0x8130
+#else
+#define MAR_HIT_PAL PAL_MARIA
+#endif
 static u16 mar_80154574[] = {
-    PAL_UNK_812F, PAL_UNK_812F, PAL_MARIA,    PAL_UNK_812F, PAL_UNK_812F,
-    PAL_MARIA,    PAL_UNK_812F, PAL_UNK_812F, PAL_MARIA,    PAL_UNK_812F,
-    PAL_UNK_812E, PAL_UNK_812F, PAL_UNK_812E, PAL_UNK_812F, PAL_MARIA};
+    PAL_UNK_812F, PAL_UNK_812F, MAR_HIT_PAL,  PAL_UNK_812F, PAL_UNK_812F,
+    MAR_HIT_PAL,  PAL_UNK_812F, PAL_UNK_812F, MAR_HIT_PAL,  PAL_UNK_812F,
+    PAL_UNK_812E, PAL_UNK_812F, PAL_UNK_812E, PAL_UNK_812F, MAR_HIT_PAL};
 
 #include "../cen/gen/maria.h"
 void MarMain(void) {
@@ -462,7 +470,7 @@ void MarMain(void) {
 
     var_s8 = 0;
     g_CurrentEntity = &MARIA;
-    playerDraw = &g_PlayerDraw[5];
+    playerDraw = &g_PlayerDraw[MAR_PLDRAW_BODY];
     damageEffects = 0;
     damageKind = 0;
 
@@ -539,7 +547,7 @@ void MarMain(void) {
                 case PL_T_CURSE:
                     break;
                 case PL_T_2:
-                    MARIA.palette = PAL_FLAG(0x130);
+                    MARIA.palette = PAL_MARIA;
                     break;
                 case PL_T_3:
                     break;

@@ -76,7 +76,7 @@ void func_pspeu_09251658(s32 unused, s32 arg1, s32 arg2) {
     D_pspeu_09295E08 = arg2;
 }
 
-void MarSetSfx(s32 arg0);
+static void MarSetSfx(s32 arg0);
 
 void func_pspeu_09251698(s32 subweaponIndex, s32 arg1, s32 arg2, s32 sfxId) {
     func_pspeu_09251600(subweaponIndex);
@@ -86,7 +86,7 @@ void func_pspeu_09251698(s32 subweaponIndex, s32 arg1, s32 arg2, s32 sfxId) {
     MarSetSfx(sfxId);
 }
 
-void func_pspeu_09251A28(s32 arg0, s32 arg1);
+static void func_pspeu_09251A28(s32 arg0, s32 arg1);
 void func_pspeu_09251700(s32 arg0, s32 arg1, s32 arg2) {
     func_pspeu_09251A28(arg0, 0);
     think_step = arg1;
@@ -304,6 +304,15 @@ s16 func_pspeu_09251EB0(void) {
 }
 
 static s32 func_pspeu_092521A8(void) {
+#if defined(MOD_CENP)
+    // the PSP returns the callee's v0 (1 when think_step changed); without a
+    // return gcc made case 0 always set think_step = 1, clobbering walk (0x18),
+    // backdash (3), slide (0x2B), ... so she only ever attacked
+    if (D_pspeu_09295E18 == 0) {
+        return func_pspeu_09251C18();
+    }
+    return func_pspeu_09251EB0();
+#endif
     if (D_pspeu_09295E18 == 0) {
         func_pspeu_09251C18();
         return;
@@ -653,7 +662,9 @@ void func_pspeu_092521E8(void) {
             D_pspeu_09295E08 = 0x40;
             think_step = 3;
         } else {
-            g_Maria.padSim |= 0x4000;
+            // Saturn port: PAD_CROSS (the PSP's 0x4000; on the PS1 that is
+            // PAD_DOWN, so she crouched and never made this jump)
+            g_Maria.padSim |= PAD_CROSS;
             D_pspeu_09295E08 = 0x13;
             think_step = 0xB;
         }
@@ -671,10 +682,13 @@ void EntityMaria(Entity* self) {
         return;
     }
 
+#if !defined(MOD_CENP)
+    // Saturn port: the PS1/Saturn fight her at any time before the scene
     if (g_CastleFlags[INVERTED_CASTLE_UNLOCKED]) {
         DestroyEntity(self);
         return;
     }
+#endif
 
     if (!self->ext.factory.paramsBase) {
         if (g_CastleFlags[MET_MARIA_IN_CEN]) {

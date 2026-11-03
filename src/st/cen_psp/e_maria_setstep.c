@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "../cen/cen.h"
 
+static s32 MarDoSubweapon(void);
+
 void MarSetInit(s32 step_s) {
     MARIA.step = PL_S_INIT;
     MARIA.step_s = step_s;

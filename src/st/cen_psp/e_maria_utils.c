@@ -73,7 +73,7 @@ void DrawMariaAfterImage(void) {
     resetAnim = MARIA_AFTERIMAGE_1.ext.afterImage.resetFlag;
     prim = &g_PrimBuf[MARIA_AFTERIMAGE_1.primIndex];
     i = 0;
-    draw = &g_PlayerDraw[6];
+    draw = &g_PlayerDraw[MAR_PLDRAW_BODY + 1];
     var_s5 = mar_801545C4[MARIA_AFTERIMAGE_1.ext.afterImage.index];
     var_s3 = mar_801545D4[MARIA_AFTERIMAGE_1.ext.afterImage.index];
 

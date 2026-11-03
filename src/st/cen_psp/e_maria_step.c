@@ -807,7 +807,7 @@ void MarStepDead(s32 damageEffect, s32 damageKind, s32 step, s32 step_s) {
     s32 scrollY;
 
     disableColorChange = 0;
-    draw = &g_PlayerDraw[5];
+    draw = &g_PlayerDraw[MAR_PLDRAW_BODY];
 
     switch (MARIA.step_s) {
     case 0:

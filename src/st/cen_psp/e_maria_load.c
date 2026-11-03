@@ -93,6 +93,8 @@ static u_long* wpn_owl_img[] = {
     (u_long*)GFX_BANK_COMPRESSED,
 #ifdef VERSION_PSP
     GFX_ENTRY(0x100, 0x180, 128, 128, wpn_owl_gfx),
+#elif defined(MOD_CENP_BOSS)
+    GFX_ENTRY(0x180, 0x080, 128, 128, wpn_owl_gfx),
 #else
     GFX_ENTRY(0x180, 0x240, 128, 128, wpn_owl_gfx),
 #endif
@@ -102,6 +104,8 @@ static u_long* wpn_turtle_img[] = {
     (u_long*)GFX_BANK_COMPRESSED,
 #ifdef VERSION_PSP
     GFX_ENTRY(0x100, 0x100, 128, 128, wpn_turtle_gfx),
+#elif defined(MOD_CENP_BOSS)
+    GFX_ENTRY(0x100, 0x0C0, 128, 128, wpn_turtle_gfx),
 #else
     GFX_ENTRY(0x100, 0x2E0, 128, 128, wpn_turtle_gfx),
 #endif
@@ -111,6 +115,8 @@ static u_long* wpn_cat_img[] = {
     (u_long*)GFX_BANK_COMPRESSED,
 #ifdef VERSION_PSP
     GFX_ENTRY(0x100, 0x140, 128, 128, wpn_cat_gfx),
+#elif defined(MOD_CENP_BOSS)
+    GFX_ENTRY(0x180, 0x0A0, 128, 128, wpn_cat_gfx),
 #else
     GFX_ENTRY(0x180, 0x2C0, 128, 128, wpn_cat_gfx),
 #endif
@@ -120,6 +126,8 @@ static u_long* wpn_cardinal_img[] = {
     (u_long*)GFX_BANK_COMPRESSED,
 #ifdef VERSION_PSP
     GFX_ENTRY(0x100, 0x120, 128, 128, wpn_cardinal_gfx),
+#elif defined(MOD_CENP_BOSS)
+    GFX_ENTRY(0x100, 0x0A0, 128, 128, wpn_cardinal_gfx),
 #else
     GFX_ENTRY(0x100, 0x260, 128, 128, wpn_cardinal_gfx),
 #endif
@@ -129,6 +137,8 @@ static u_long* wpn_dragon_img[] = {
     (u_long*)GFX_BANK_COMPRESSED,
 #ifdef VERSION_PSP
     GFX_ENTRY(0x100, 0x160, 128, 128, wpn_dragon_gfx),
+#elif defined(MOD_CENP_BOSS)
+    GFX_ENTRY(0x100, 0x0E0, 128, 128, wpn_dragon_gfx),
 #else
     GFX_ENTRY(0x100, 0x240, 128, 128, wpn_dragon_gfx),
 #endif
@@ -138,6 +148,8 @@ static u_long* wpn_doll_img[] = {
     (u_long*)GFX_BANK_COMPRESSED,
 #ifdef VERSION_PSP
     GFX_ENTRY(0x100, 0x1A0, 128, 128, wpn_doll_gfx),
+#elif defined(MOD_CENP_BOSS)
+    GFX_ENTRY(0x180, 0x0C0, 128, 128, wpn_doll_gfx),
 #else
     GFX_ENTRY(0x180, 0x260, 128, 128, wpn_doll_gfx),
 #endif
@@ -147,6 +159,8 @@ static u_long* crash_img[] = {
     (u_long*)GFX_BANK_COMPRESSED,
 #ifdef VERSION_PSP
     GFX_ENTRY(0x100, 0x1C0, 128, 128, crash_turtle_gfx),
+#elif defined(MOD_CENP_BOSS)
+    GFX_ENTRY(0x100, 0x080, 128, 128, crash_turtle_gfx),
 #else
     GFX_ENTRY(0x100, 0x300, 128, 128, crash_turtle_gfx),
 #endif

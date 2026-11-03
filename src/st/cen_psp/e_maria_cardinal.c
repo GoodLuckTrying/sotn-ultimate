@@ -23,7 +23,7 @@ void EntityMariaCardinalAttack(Entity* self) {
     case 0:
         self->flags = FLAG_UNK_100000 | FLAG_KEEP_ALIVE_OFFCAMERA |
                       FLAG_POS_CAMERA_LOCKED;
-        self->unk5A = 0x51;
+        self->unk5A = MAR_UNK5A_CARDINAL;
         self->blendMode = BLEND_TRANSP | BLEND_ADD;
         self->zPriority = MARIA.zPriority - 8;
         self->palette = PAL_WPN_CARDINAL;
@@ -96,7 +96,7 @@ void EntityMariaCardinalCrash(Entity* self) {
     case 0:
         self->flags = FLAG_POS_CAMERA_LOCKED | FLAG_KEEP_ALIVE_OFFCAMERA |
                       FLAG_UNK_100000;
-        self->unk5A = 0x51;
+        self->unk5A = MAR_UNK5A_CARDINAL;
         self->zPriority = 0x1C0;
         self->palette = PAL_WPN_CARDINAL;
         self->animSet = ANIMSET_WPN_CARDINAL;
@@ -326,7 +326,7 @@ void EntityMariaCardinalCrashFireball(Entity* self) {
         }
         self->flags =
             FLAG_HAS_PRIMS | FLAG_KEEP_ALIVE_OFFCAMERA | FLAG_POS_CAMERA_LOCKED;
-        self->unk5A = 0x51;
+        self->unk5A = MAR_UNK5A_CARDINAL;
         self->zPriority = 0x1C0;
         self->palette = PAL_WPN_CARDINAL;
         self->animSet = ANIMSET_WPN_CARDINAL;
@@ -430,7 +430,11 @@ void EntityMariaCardinalCrashFireball(Entity* self) {
             prim = &g_PrimBuf[self->primIndex];
             for (i = 0; i < 4; i++) {
                 color = -0x80;
+#if defined(MOD_CENP_BOSS)
+                prim->clut = PAL_WPN_CARDINAL & 0x3FF;
+#else
                 prim->clut = (PAL_WPN_CARDINAL) & 0x136;
+#endif
                 prim->priority = self->zPriority;
                 prim->drawMode = DRAW_DEFAULT;
                 switch (i) {
@@ -468,7 +472,7 @@ void EntityMariaCardinalCrashFireball(Entity* self) {
                     prim->v2 = 0x7F;
                     prim->u3 = 0xCF;
                     prim->v3 = 0x7F;
-                    prim->tpage = 0x14;
+                    prim->tpage = MAR_TPAGE(MAR_UNK5A_CARDINAL);
                 } else {
                     prim->u0 = 0x98;
                     prim->v0 = 0x38;
@@ -478,7 +482,7 @@ void EntityMariaCardinalCrashFireball(Entity* self) {
                     prim->v2 = 0x47;
                     prim->u3 = 0xA7;
                     prim->v3 = 0x47;
-                    prim->tpage = 0x34;
+                    prim->tpage = MAR_TPAGE(MAR_UNK5A_CARDINAL) | 0x20;
                     prim->drawMode |= ENTITY_SCALEX | ENTITY_ROTATE;
                     if (i == 1) {
                         color = -0x80;

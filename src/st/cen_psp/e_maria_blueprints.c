@@ -1306,7 +1306,7 @@ void EntityMariaOwl(Entity* self) {
         self->hitFlags = 0;
         self->flags = FLAG_UNK_100000 | FLAG_KEEP_ALIVE_OFFCAMERA |
                       FLAG_POS_CAMERA_LOCKED;
-        self->unk5A = 0x58;
+        self->unk5A = MAR_UNK5A_OWL;
         self->zPriority = MARIA.zPriority - 8;
         self->palette = PAL_WPN_OWL;
         self->animSet = ANIMSET_WPN_OWL;
@@ -1513,9 +1513,17 @@ void MarEntityPlayerBlinkWhite(Entity* self) {
     plSpriteIndex &= 0x7FFF;
     selfX = self->posX.i.hi;
     selfY = self->posY.i.hi;
+#if defined(MOD_CENP_BOSS)
+    // PS1: her sheet (DRA's g_api.o.unk30, mod_cenp.c), her slot's VRAM
+    // (SPRITESHEET_PTR and u 4 v 1 of tpage 0x18 are Alucard's)
+    plSprite = g_api.o.unk30[plSpriteIndex];
+    xMargin = (g_PlayerDraw[MAR_UNK5A_BODY].rect0.x & 0x3F) * 4;
+    yMargin = g_PlayerDraw[MAR_UNK5A_BODY].rect0.y & 0xFF;
+#else
     plSprite = ((u8**)SPRITESHEET_PTR)[plSpriteIndex];
     xMargin = 4;
     yMargin = 1;
+#endif
     wSprite = xMargin + plSprite[0];
     hSprite = yMargin + plSprite[1];
     width = wSprite - xMargin;
@@ -1547,7 +1555,11 @@ void MarEntityPlayerBlinkWhite(Entity* self) {
         prim = &g_PrimBuf[self->primIndex];
         for (i = 0; i < 8; i++) {
             D_80154F7C[i] = i << 9;
+#if defined(MOD_CENP_BOSS)
+            prim->tpage = g_PlayerDraw[MAR_UNK5A_BODY].tpage;
+#else
             prim->tpage = 0x18;
+#endif
             prim->clut = dataPtr[3];
             prim->r0 = prim->b0 = prim->g0 = prim->r1 = prim->b1 = prim->g1 =
                 prim->r2 = prim->b2 = prim->g2 = prim->r3 = prim->b3 =
@@ -2978,7 +2990,7 @@ void EntityMariaCrashSummon(Entity* self) {
             return;
         }
         self->flags = FLAG_HAS_PRIMS | FLAG_KEEP_ALIVE_OFFCAMERA;
-        self->unk5A = 0x5C;
+        self->unk5A = MAR_UNK5A_CRASH;
 
         self->zPriority = 0x1C0;
         LoadCrashSummonResouces(self->ext.mariaCrashSummon.crashId);
@@ -2990,8 +3002,12 @@ void EntityMariaCrashSummon(Entity* self) {
         self->ext.mariaCrashSummon.timer -= 0x10;
         if (self->ext.mariaCrashSummon.timer > 0) {
             prim = &g_PrimBuf[self->primIndex];
-            prim->tpage = 0x17;
+            prim->tpage = MAR_TPAGE(MAR_UNK5A_CRASH);
+#if defined(MOD_CENP_BOSS)
+            prim->clut = PAL_CRASH & 0x3FF;
+#else
             prim->clut = 0x13A;
+#endif
             prim->priority = 0x1C0;
             x = (self->ext.mariaCrashSummon.timer * 128) / 256;
             y = (self->ext.mariaCrashSummon.timer * 112) / 256;

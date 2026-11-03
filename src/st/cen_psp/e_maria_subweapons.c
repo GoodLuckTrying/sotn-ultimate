@@ -130,7 +130,7 @@ void EntityMariaCatAttack(Entity* self) {
     case 0:
         self->flags = FLAG_POS_CAMERA_LOCKED | FLAG_KEEP_ALIVE_OFFCAMERA |
                       FLAG_UNK_100000;
-        self->unk5A = 0x54;
+        self->unk5A = MAR_UNK5A_CAT;
         self->zPriority = MARIA.zPriority - 8;
         self->palette = PAL_WPN_CAT;
         self->animSet = ANIMSET_WPN_CAT;
@@ -275,7 +275,7 @@ void EntityMariaCatCrash(Entity* self) {
     case 0:
         self->flags = FLAG_POS_CAMERA_LOCKED | FLAG_KEEP_ALIVE_OFFCAMERA |
                       FLAG_UNK_100000;
-        self->unk5A = 0x54;
+        self->unk5A = MAR_UNK5A_CAT;
         self->zPriority = MARIA.zPriority - 8;
         self->palette = PAL_WPN_CAT_CRASH;
         self->animSet = ANIMSET_WPN_CAT;
@@ -358,7 +358,7 @@ void EntityMariaCatCrashAttack(Entity* self) {
     case 0:
         self->flags = FLAG_POS_CAMERA_LOCKED | FLAG_KEEP_ALIVE_OFFCAMERA |
                       FLAG_UNK_100000;
-        self->unk5A = 0x54;
+        self->unk5A = MAR_UNK5A_CAT;
         self->zPriority = MARIA.zPriority - 8;
         self->palette = PAL_WPN_CAT;
         self->animSet = ANIMSET_WPN_CAT;
@@ -405,7 +405,7 @@ void EntityMariaDollAttack(Entity* self) {
     case 0:
         self->flags = FLAG_POS_CAMERA_LOCKED | FLAG_KEEP_ALIVE_OFFCAMERA |
                       FLAG_UNK_100000;
-        self->unk5A = 0x59;
+        self->unk5A = MAR_UNK5A_DOLL;
         self->zPriority = MARIA.zPriority - 8;
         self->palette = PAL_WPN_DOLL;
         self->animSet = ANIMSET_WPN_DOLL;
@@ -495,7 +495,7 @@ void EntityMariaDollActivate(Entity* self) {
     case 0:
         self->flags = FLAG_POS_CAMERA_LOCKED | FLAG_KEEP_ALIVE_OFFCAMERA |
                       FLAG_UNK_100000;
-        self->unk5A = 0x59;
+        self->unk5A = MAR_UNK5A_DOLL;
         self->zPriority = MARIA.zPriority - 8;
         self->palette = PAL_WPN_DOLL;
         self->animSet = ANIMSET_WPN_DOLL;
@@ -539,7 +539,7 @@ void EntityMariaTurtleAttack(Entity* self) {
     case 0:
         self->flags = FLAG_POS_CAMERA_LOCKED | FLAG_KEEP_ALIVE_OFFCAMERA |
                       FLAG_UNK_100000;
-        self->unk5A = 0x50;
+        self->unk5A = MAR_UNK5A_TURTLE;
         self->zPriority = MARIA.zPriority - 8;
         self->palette = PAL_WPN_TURTLE;
         self->animSet = ANIMSET_WPN_TURTLE;
@@ -592,7 +592,7 @@ void EntityMariaTurtleCrash(Entity* self) {
     case 0:
         self->flags = FLAG_UNK_100000 | FLAG_KEEP_ALIVE_OFFCAMERA |
                       FLAG_POS_CAMERA_LOCKED;
-        self->unk5A = 0x50;
+        self->unk5A = MAR_UNK5A_TURTLE;
         self->zPriority = MARIA.zPriority - 6;
         self->palette = PAL_WPN_TURTLE;
         self->animSet = ANIMSET_WPN_TURTLE;
@@ -722,7 +722,7 @@ void EntityMariaTurtleCrashVortex(Entity* self) {
     case 0:
         self->flags = FLAG_UNK_100000 | FLAG_KEEP_ALIVE_OFFCAMERA |
                       FLAG_POS_CAMERA_LOCKED;
-        self->unk5A = 0x50;
+        self->unk5A = MAR_UNK5A_TURTLE;
         self->zPriority = MARIA.zPriority - 7;
         self->palette = PAL_WPN_TURTLE;
         self->animSet = ANIMSET_WPN_TURTLE;

@@ -345,6 +345,15 @@ bool MarDoCrash(void) {
             MarSetAnimation(mar_801555C8);
         } else if (PLAYER.step == PL_S_STAND || PLAYER.step == PL_S_WALK) {
             MarSetAnimation(mar_80155588);
+#if defined(MOD_SATURN)
+        } else if (PLAYER.step == PL_S_CROUCH) {
+            // Saturn port fix (the PSP's bug): crouching, the looping stand
+            // animation below never ends, and MarStepCrouch's step_s 4 (a
+            // landing, e.g. from the drop kick) waits for its end: Maria
+            // stayed stuck. Crouch again instead
+            MarSetAnimation(mar_anim_crouch);
+            PLAYER.step_s = 0;
+#endif
         } else {
             MarSetAnimation(mar_anim_stand_relax);
         }

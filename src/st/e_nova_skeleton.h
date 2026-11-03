@@ -1,4 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+// the laser's primitives: the art's tpage (its second block, u + 128) and
+// the palettes PAL_NOVA_SKELETON + 2 / + 3 (Saturn port: overridable)
+#ifndef NOVA_TPAGE
+#define NOVA_TPAGE 0x12
+#endif
+#ifndef NOVA_CLUT
+#define NOVA_CLUT 0x216
+#endif
 extern EInit g_EInitNovaSkeleton;
 extern EInit g_EInitNovaSkeleton2;
 
@@ -178,8 +186,8 @@ void EntityNovaSkeleton(Entity* self) {
         prim = &g_PrimBuf[primIndex];
         self->ext.nova.prim = prim;
         UnkPolyFunc2(prim);
-        prim->tpage = 0x12;
-        prim->clut = 0x216;
+        prim->tpage = NOVA_TPAGE;
+        prim->clut = NOVA_CLUT;
         prim->u0 = prim->u2 = 0xC0;
         prim->u1 = prim->u3 = 0xFF;
         prim->v0 = prim->v1 = 0;
@@ -347,8 +355,8 @@ void EntityNovaLaser(Entity* self) {
         self->ext.nova.prim = prim;
         var_s1 = &primData[0];
         for (var_s2 = 0; var_s2 < 3; prim = prim->next, var_s2++) {
-            prim->tpage = 0x12;
-            prim->clut = 0x216;
+            prim->tpage = NOVA_TPAGE;
+            prim->clut = NOVA_CLUT;
             prim->u0 = prim->u2 = *var_s1++ + 0x80;
             prim->u1 = prim->u3 = *var_s1++ + 0x80;
             prim->v0 = prim->v1 = 0x40;
@@ -424,9 +432,9 @@ void EntityNovaLaser(Entity* self) {
         prim->y0 = prim->y1 = centerY - self->ext.nova.laserFadeTimer;
         prim->y2 = prim->y3 = centerY + self->ext.nova.laserFadeTimer;
         if (g_Timer & 1) {
-            prim->clut = 0x216;
+            prim->clut = NOVA_CLUT;
         } else {
-            prim->clut = 0x217;
+            prim->clut = NOVA_CLUT + 1;
         }
     }
     prim = self->ext.nova.prim;

@@ -1,4 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+// the primitives' tpage: the art's (Saturn port: overridable)
+#ifndef VENUS_WEED_TPAGE
+#define VENUS_WEED_TPAGE 0x14
+#endif
 extern EInit g_EInitVenusWeedFlower;
 extern EInit g_EInitVenusWeedTendril;
 extern EInit g_EInitVenusWeedDart;
@@ -158,7 +162,7 @@ static Primitive* SetupPrimsForEntitySpriteParts(
             }
         }
 
-        prim->tpage = 0x14;
+        prim->tpage = VENUS_WEED_TPAGE;
         // Entity-relative z priority
         prim->priority = entity->zPriority + 1;
 
@@ -362,7 +366,7 @@ void EntityVenusWeed(Entity* self) {
 
         // Leaves
         for (i = 0; i < 2; i++) {
-            prim->tpage = 0x14;
+            prim->tpage = VENUS_WEED_TPAGE;
             prim->clut = PLANT_CLUT;
             prim->u0 = prim->u2 = SpriteLeavesX;
             prim->u1 = prim->u3 = SpriteLeavesX + SpriteLeavesW;
@@ -376,7 +380,7 @@ void EntityVenusWeed(Entity* self) {
 
         // Stem
         self->ext.venusWeed.stemPrim = prim;
-        prim->tpage = 0x14;
+        prim->tpage = VENUS_WEED_TPAGE;
         prim->clut = PLANT_CLUT;
         prim->u0 = prim->u2 = SpriteStemX;
         prim->u1 = prim->u3 = SpriteStemX + SpriteStemW;

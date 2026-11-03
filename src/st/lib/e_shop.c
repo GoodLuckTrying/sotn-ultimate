@@ -92,6 +92,14 @@ static u16 D_us_80180E90[] = {
     0x148, 0x11C, 0x151, 0x144, 0x0E0, 0x0D9, 0x0E5, 0x133, 0x068, 0x0C6, 0x18C,
     0x164, 0x15F, 0x17B};
 
+#if defined(MOD_SATURN_ENEMIES)
+#include "../../../mods/sotn-ultimate/src/enemies/e_shop_mod_bestiary.h"
+#else
+#define LIB_BIT(i) (i)
+#define LIB_ENEMY(i) D_us_80180E90[i]
+#define LIB_TOP_MAX 0x42
+#endif
+
 static const char* D_us_80180FB4[] = {
     "Destroyed by Richter in １７９２．（５ years ago）",
     "Revives due to blood soaked@bones．",
@@ -125,7 +133,13 @@ static const char* D_us_80180FB4[] = {
     "Well armored axe knight．",
     "Fire and ice demon．@Seems reluctant to fight．",
     "Skeleton archer equipped @with bow．",
+#if defined(MOD_SATURN)
+    // the PSP port's text (mods/sotn-ultimate/tools/gen_menu_text.py lists the
+    // menu changes)
+    "Pillar built from bleached@skull of dragon．",
+#else
     "Cannon built of white @dragon skulls．",
+#endif
     "Shape−shifting demon．",
     "Local barnyard owl Mutated @by castle’s influence．",
     "Executed soldier’s head．@Hunting for vengeance．",
@@ -189,7 +203,11 @@ static const char* D_us_80180FB4[] = {
     "Gravestones possessed by @evil spirits of dead．",
     "Watered with human blood．",
     "The cowardly lion．",
+#if defined(MOD_SATURN)
+    "Impaled man looking for brains．",
+#else
     "Impaled man looking for brain．",
+#endif
     "Nightmarish creature．@Composed of many．",
     "Monster nicknamed ””schmoo””．",
     "Heartless tin man．",
@@ -233,7 +251,11 @@ static const char* D_us_80180FB4[] = {
     "New−half ice spirit．@Servant of Galamoth．",
     "Young female witch．",
     "Master Vampire hunter．",
+#if defined(MOD_SATURN)
+    "Rare bird．@Runs when it sees people．",
+#else
     "Rare bird．@Runs when sees people．",
+#endif
     "Magical being with plan to @rule the netherworld．",
     "High level Armor Lord．",
     "Dracula’s close friend．",
@@ -3391,8 +3413,14 @@ static char D_us_801816A4[] = {
     CH('S'), CH('O'), CH('L'), CH('D'), CH(' '), CH('O'), CH('U'), CH('T')};
 static const char* D_us_801816AC[] = {_S("Jewel of Open")};
 static const char* D_us_801816B0[] = {
+#if defined(MOD_SATURN)
+    // the PSP port's capitals
+    _S("Castle Map"),     _S("Magic Scroll 1"), _S("Magic Scroll 2"),
+    _S("Magic Scroll 3"), _S("Magic Scroll 4"), _S("Magic Scroll 5")};
+#else
     _S("Castle map"),     _S("Magic scroll 1"), _S("Magic scroll 2"),
     _S("Magic scroll 3"), _S("Magic scroll 4"), _S("Magic scroll 5")};
+#endif
 #endif
 
 void func_us_801B56E4(Entity* self) {
@@ -4183,10 +4211,11 @@ void func_us_801B6E20(Primitive* prim, Entity* arg1) {
         } else {
             posX = 0x78;
         }
-        enemyId = D_us_80180E90[enemyIndex];
+        enemyId = LIB_ENEMY(enemyIndex);
         if (enemyId != 0xFFFF) {
-            enemyMask = g_CastleFlags[(enemyIndex >> 3) + ENEMY_LIST_190];
-            if (enemyMask & (1 << (enemyIndex & 7))) {
+            enemyMask =
+                g_CastleFlags[(LIB_BIT(enemyIndex) >> 3) + ENEMY_LIST_190];
+            if (enemyMask & (1 << (LIB_BIT(enemyIndex) & 7))) {
                 prim = func_us_801B1064(
                     prim, posX, posY, g_api.enemyDefs[enemyId].name, 0x196);
             } else {
@@ -4361,7 +4390,7 @@ void func_us_801B6F30(Entity* self) {
             if (self->ext.et_801B6F30.unk80 < 6) {
                 g_api.PlaySfx(SFX_UI_MOVE);
                 self->ext.et_801B6F30.unk80++;
-            } else if (self->ext.et_801B6F30.unk82 < 0x42) {
+            } else if (self->ext.et_801B6F30.unk82 < LIB_TOP_MAX) {
                 g_api.PlaySfx(SFX_UI_MOVE);
                 self->ext.et_801B6F30.unk82++;
             }
@@ -4378,11 +4407,11 @@ void func_us_801B6F30(Entity* self) {
             if (self->ext.et_801B6F30.unk80 < 6) {
                 g_api.PlaySfx(SFX_UI_MOVE);
                 self->ext.et_801B6F30.unk80 = 6;
-            } else if (self->ext.et_801B6F30.unk82 < 0x42) {
+            } else if (self->ext.et_801B6F30.unk82 < LIB_TOP_MAX) {
                 g_api.PlaySfx(SFX_UI_MOVE);
                 self->ext.et_801B6F30.unk82 += 7;
-                if (self->ext.et_801B6F30.unk82 > 0x42) {
-                    self->ext.et_801B6F30.unk82 = 0x42;
+                if (self->ext.et_801B6F30.unk82 > LIB_TOP_MAX) {
+                    self->ext.et_801B6F30.unk82 = LIB_TOP_MAX;
                 }
             }
         } else {
@@ -4414,8 +4443,8 @@ void func_us_801B6F30(Entity* self) {
                 (self->ext.et_801B6F30.unk82 + self->ext.et_801B6F30.unk80) *
                     2 +
                 self->ext.et_801B6F30.unk84;
-            if (g_CastleFlags[(enemyIndex >> 3) + ENEMY_LIST_190] &
-                (1 << (enemyIndex & 7))) {
+            if (g_CastleFlags[(LIB_BIT(enemyIndex) >> 3) + ENEMY_LIST_190] &
+                (1 << (LIB_BIT(enemyIndex) & 7))) {
                 g_api.PlaySfx(SFX_UI_CONFIRM);
                 SetStep(4);
             } else {
@@ -4445,7 +4474,7 @@ void func_us_801B6F30(Entity* self) {
             prim->drawMode = DRAW_HIDE;
         }
         prim = prim->next;
-        if (self->ext.et_801B6F30.unk82 < 0x42) {
+        if (self->ext.et_801B6F30.unk82 < LIB_TOP_MAX) {
             prim->drawMode = DRAW_DEFAULT;
         } else {
             prim->drawMode = DRAW_HIDE;
@@ -4654,8 +4683,28 @@ void func_us_801B7DF8(Primitive* prim, Entity* arg1, s16 enemyId) {
     EnemyDef* enemyDef;
     u8 params;
     u16 clut;
+#ifdef MOD_SATURN
+    u16 strengths, immunes, level;
+#endif
 
     enemyDef = &g_api.enemyDefs[enemyId];
+#ifdef MOD_SATURN
+    strengths = enemyDef->strengths;
+    immunes = enemyDef->immunes;
+    level = enemyDef->level;
+    if (LIB_MARIA_PSP(arg1->params)) {
+        strengths = MOD_PSP_MARIA_STRONG;
+        immunes = MOD_PSP_MARIA_IMMUNE;
+        level = MOD_PSP_MARIA_LEVEL;
+    }
+#define LIB_STRONG strengths
+#define LIB_IMMUNE immunes
+#define LIB_LEVEL level
+#else
+#define LIB_STRONG enemyDef->strengths
+#define LIB_IMMUNE enemyDef->immunes
+#define LIB_LEVEL enemyDef->level
+#endif
     prim->drawMode = DRAW_DEFAULT;
     prim = prim->next;
     prim->drawMode = DRAW_DEFAULT;
@@ -4665,11 +4714,11 @@ void func_us_801B7DF8(Primitive* prim, Entity* arg1, s16 enemyId) {
     posY = 0x34;
     prim = func_us_801B1064(
         prim, posX, posY, D_us_801818C0[7], 0x196); // "Strong VS."
-    prim = func_us_801B7D10(prim, enemyDef->strengths, 0x3D);
+    prim = func_us_801B7D10(prim, LIB_STRONG, 0x3D);
     posY += 0x14;
     prim =
         func_us_801B1064(prim, posX, posY, D_us_801818C0[8], 0x196); // "Immune"
-    prim = func_us_801B7D10(prim, enemyDef->immunes, 0x51);
+    prim = func_us_801B7D10(prim, LIB_IMMUNE, 0x51);
     posY += 0x14;
     prim = func_us_801B1064(
         prim, posX, posY, D_us_801818C0[9], 0x196); // "Weak VS."
@@ -4698,7 +4747,7 @@ void func_us_801B7DF8(Primitive* prim, Entity* arg1, s16 enemyId) {
     prim = func_us_801B1064(prim, posX, 0x34, D_us_801818C0[0], 0x196); // "LV"
     posX += 0x12;
     if (arg1->params) {
-        func_us_801B3EC8(prim, enemyDef->level, 2);
+        func_us_801B3EC8(prim, LIB_LEVEL, 2);
     } else {
         func_us_801B3FB4(prim, D_us_801818C0[6], 2, 1); // "??"
     }
@@ -4749,7 +4798,7 @@ void func_us_801B7DF8(Primitive* prim, Entity* arg1, s16 enemyId) {
         clut = 0x159;
     }
     prim = func_us_801B1064(prim, 0x84, 0x8F, func_us_801B7C94(posX), clut);
-    params = arg1->params;
+    params = LIB_BIT(arg1->params);
     if ((g_CastleFlags[(params >> 3) + ENEMY_LIST_RAREDROP_1B0] &
          (1 << (params & 7))) ||
         !enemyDef->rareItemId) {
@@ -4763,6 +4812,9 @@ void func_us_801B7DF8(Primitive* prim, Entity* arg1, s16 enemyId) {
         prim->drawMode = DRAW_HIDE;
         prim = prim->next;
     }
+#undef LIB_STRONG
+#undef LIB_IMMUNE
+#undef LIB_LEVEL
 }
 
 void func_us_801B8234(Entity* self) {
@@ -4777,7 +4829,7 @@ void func_us_801B8234(Entity* self) {
     EnemyDef* enemyDef;
     s32 pad[12];
 
-    enemyId = D_us_80180E90[self->params];
+    enemyId = LIB_ENEMY(self->params);
     switch (self->step) {
     case 0:
 #ifdef VERSION_PSP
@@ -4908,9 +4960,17 @@ void func_us_801B8234(Entity* self) {
             break;
 
         case 1:
-            if (g_api.LoadMonsterLibrarianPreview(self->params)) {
+            // (Saturn port: bits >= MOD_LIB_RETAIL_ENEMIES load from
+            // BIN/MONSTER2.BIN, src/dra/cd.c)
+#ifdef MOD_SATURN
+            if (g_api.LoadMonsterLibrarianPreview(LIB_PIC(self->params))) {
                 self->step_s++;
             }
+#else
+            if (g_api.LoadMonsterLibrarianPreview(LIB_BIT(self->params))) {
+                self->step_s++;
+            }
+#endif
             break;
 
         case 2:
@@ -4931,6 +4991,20 @@ void func_us_801B8234(Entity* self) {
             func_us_801B0C40(pix, s3, 0, 0x1C0, 0x6E);
             s3 = D_psp_092A5F40[self->params];
             func_us_801B0C40(pix, s3, 0, 0x1D0, 0x6E);
+#elif defined(MOD_SATURN)
+            if (LIB_BIT(self->params) >= MOD_LIB_RETAIL_ENEMIES) {
+                s3 = g_ModLibDesc[LIB_BIT(self->params) -
+                                  MOD_LIB_RETAIL_ENEMIES];
+                // Maria: the PSP port's own description with the PSP and
+                // JP dubs (gen_saturn_bestiary.py DESC_PSP)
+                if (LIB_BIT(self->params) == MOD_LIB_DESC_PSP_BIT &&
+                    MOD_PSP_DUB_ON()) {
+                    s3 = g_ModLibDescPsp;
+                }
+            } else {
+                s3 = D_us_80180FB4[LIB_BIT(self->params)];
+            }
+            func_us_801B0C40(pix, s3, 0, MOD_LIB_DESC_Y, 0x6E);
 #else
             s3 = D_us_80180FB4[self->params];
             func_us_801B0C40(pix, s3, 0, 0x1C0, 0x6E);
@@ -4972,13 +5046,16 @@ void func_us_801B8234(Entity* self) {
 #ifdef VERSION_PSP
             for (enemyIndex = self->params + 1; enemyIndex < 0x94;
                  enemyIndex++) {
+#elif defined(MOD_SATURN)
+            for (enemyIndex = self->params + 1;
+                 enemyIndex < MOD_LIB_NUM_ENEMIES; enemyIndex++) {
 #else
             for (enemyIndex = self->params + 1; enemyIndex < 0x92;
                  enemyIndex++) {
 #endif
-                if (g_CastleFlags[(enemyIndex >> 3) + ENEMY_LIST_190] &
-                        (1 << (enemyIndex & 7)) &&
-                    D_us_80180E90[self->params] != 0xFFFF) {
+                if (g_CastleFlags[(LIB_BIT(enemyIndex) >> 3) + ENEMY_LIST_190] &
+                        (1 << (LIB_BIT(enemyIndex) & 7)) &&
+                    LIB_ENEMY(self->params) != 0xFFFF) {
                     self->params = enemyIndex;
                     SetStep(4);
                     break;
@@ -4986,9 +5063,9 @@ void func_us_801B8234(Entity* self) {
             }
         } else if (pads & PAD_LEFT) {
             for (enemyIndex = self->params - 1; enemyIndex >= 0; enemyIndex--) {
-                if (g_CastleFlags[(enemyIndex >> 3) + ENEMY_LIST_190] &
-                        (1 << (enemyIndex & 7)) &&
-                    D_us_80180E90[self->params] != 0xFFFF) {
+                if (g_CastleFlags[(LIB_BIT(enemyIndex) >> 3) + ENEMY_LIST_190] &
+                        (1 << (LIB_BIT(enemyIndex) & 7)) &&
+                    LIB_ENEMY(self->params) != 0xFFFF) {
                     self->params = enemyIndex;
                     SetStep(4);
                     break;

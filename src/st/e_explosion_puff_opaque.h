@@ -43,7 +43,8 @@ void CreateExplosionPuff() {
 
 void EntityExplosionPuffOpaque(Entity* self) {
     EntityConfig* obj;
-#if defined(STAGE_IS_NZ1) || defined(STAGE_IS_RNZ1) || defined(STAGE_IS_RLIB)
+#if defined(STAGE_IS_NZ1) || defined(STAGE_IS_RNZ1) ||                         \
+    defined(STAGE_IS_RLIB) || defined(STAGE_IS_GDN)
     s16 rotate;
 #endif
     s32 params;
@@ -152,7 +153,9 @@ void EntityExplosionPuffOpaque(Entity* self) {
         break;
 
     case 4:
-#if defined(STAGE_IS_NZ1) || defined(STAGE_IS_RNZ1)
+// Saturn port: the Garden boss's death fire (Saturn func_060DECE0 step 4)
+// is this spreading fire
+#if defined(STAGE_IS_NZ1) || defined(STAGE_IS_RNZ1) || defined(STAGE_IS_GDN)
         if (!self->step_s) {
             self->drawFlags = ENTITY_OPACITY;
             self->drawFlags |= ENTITY_ROTATE;

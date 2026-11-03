@@ -166,6 +166,9 @@ void EntitySealedDoor(Entity* self) {
 #else
         if (!(((PLAYER.facingLeft != GetSideToPlayer()) & 1) ^ 1) &&
             ((PLAYER.step == 25 && g_PlayableCharacter != PLAYER_ALUCARD) ||
+#if defined(MOD_SATURN)
+             MOD_SPRINTING() ||
+#endif
              PLAYER.step == 1) &&
             SealedDoorIsNearPlayer(self)) {
 #endif

@@ -413,6 +413,12 @@ void EntityPrizeDrop(Entity* self) {
 #endif
             itemId = self->params = 0;
         }
+#if defined(MOD_SATURN_MARIA) && STAGE != STAGE_ST0
+        if (MOD_MARIA_PSP_NO_SUBWPN(itemId)) {
+            itemId = 0; // Saturn port: as the PSP (include/game.h)
+            self->params &= 0x8000;
+        }
+#endif
 
 #if defined(VERSION_PSP) && STAGE != STAGE_ST0
         if (g_PlayableCharacter == PLAYER_MARIA && itemId >= 0xE &&
@@ -830,7 +836,16 @@ void EntityEquipItemDrop(Entity* self) {
 #if !(defined VERSION_BETA || defined STAGE_IS_TEK || STAGE == STAGE_ST0)
         self->ext.equipItemDrop.iconSlot = i;
 #endif
-        if (itemId < NUM_HAND_ITEMS) {
+#if defined(MOD_SATURN) && defined(MOD_NEW_HAND_DROPS)
+        // Saturn port: new hand items drop as combined ids from
+        // MOD_DROP_HAND_BASE (include/game.h)
+        if (itemId >= MOD_DROP_HAND_BASE) {
+            itemId -= MOD_DROP_HAND_BASE - NUM_HAND_ITEMS;
+            g_api.LoadEquipIcon(g_api.equipDefs[itemId].icon,
+                                g_api.equipDefs[itemId].iconPalette, i);
+        } else
+#endif
+            if (itemId < NUM_HAND_ITEMS) {
             g_api.LoadEquipIcon(g_api.equipDefs[itemId].icon,
                                 g_api.equipDefs[itemId].iconPalette, i);
         } else {
@@ -922,7 +937,14 @@ void EntityEquipItemDrop(Entity* self) {
             g_unkGraphicsStruct.BottomCornerTextTimer = 0;
         }
         g_api.PlaySfx(SFX_ITEM_PICKUP);
-        if (itemId < NUM_HAND_ITEMS) {
+#if defined(MOD_SATURN) && defined(MOD_NEW_HAND_DROPS)
+        if (itemId >= MOD_DROP_HAND_BASE) {
+            itemId -= MOD_DROP_HAND_BASE - NUM_HAND_ITEMS;
+            name = g_api.equipDefs[itemId].name;
+            g_api.AddToInventory(itemId, EQUIP_HAND);
+        } else
+#endif
+            if (itemId < NUM_HAND_ITEMS) {
             name = g_api.equipDefs[itemId].name;
             g_api.AddToInventory(itemId, EQUIP_HAND);
         } else {
@@ -1047,7 +1069,14 @@ void EntityRelicOrb(Entity* self) {
 
     switch (self->step) {
     case 0:
-#if STAGE != STAGE_ST0
+#if defined(MOD_GODSPEED) && defined(STAGE_IS_TOP)
+        // Saturn port: the Castle Keep's God Speed Shoes are relic 30, whose
+        // flags live outside g_Status.relics (include/game.h)
+        if (MOD_RELIC_FLAGS(relicId) & RELIC_FLAG_FOUND) {
+            DestroyEntity(self);
+            return;
+        }
+#elif STAGE != STAGE_ST0
         // If the relic was previously obtained, do not spawn it.
         if (g_Status.relics[relicId] & RELIC_FLAG_FOUND) {
             DestroyEntity(self);
@@ -1512,7 +1541,13 @@ void EntityPersistentItemDrop(Entity* self) {
         }
 
         index -= HEART_DROP_CASTLE_FLAG;
-        index = PrizeDrops[index];
+#if defined(MOD_SATURN) && defined(MOD_EXTRA_PRIZE_INDEX)
+        // Saturn port: one extra drop past PrizeDrops[] (see the stage header)
+        if (index == MOD_EXTRA_PRIZE_INDEX) {
+            index = MOD_EXTRA_PRIZE_DROP;
+        } else
+#endif
+            index = PrizeDrops[index];
         if (index < 128) {
             self->unkB8 = (Entity*)EntityPrizeDrop;
         } else {

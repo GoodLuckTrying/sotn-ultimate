@@ -115,6 +115,12 @@ static u16 g_testCollEnemyLookup[] = {
 
 #endif
 
+#if defined(MOD_SATURN_ENEMIES)
+#include "../../mods/sotn-ultimate/src/enemies/collision_mod_saturn_enemies.h"
+#else
+#define COLL_ENEMY_LOOKUP(id) g_testCollEnemyLookup[id]
+#endif
+
 static u8 g_testCollLuckCutoff[] = {0x00, 0x40, 0x20, 0x10};
 
 static u8 g_testColluCoords[] = {
@@ -391,7 +397,7 @@ void HitDetection(void) {
                 CreateEntityFromEntity(E_SOUL_STEAL_ORB, entity, otherEntity);
             }
         }
-        miscVar1 = g_testCollEnemyLookup[entityHit->enemyId];
+        miscVar1 = COLL_ENEMY_LOOKUP(entityHit->enemyId);
         if (miscVar1) {
             miscVar1--;
             miscVar3 = 1 << (miscVar1 & 7);
@@ -442,7 +448,12 @@ void HitDetection(void) {
                 }
             }
             if (iterEnt->attack && entityHit->hitPoints != 0x7FFF) {
+#ifdef MOD_CENP
+                // the PSP Maria fight: her PSP defence / elements
+                miscVar1 = CenpDealDamage(entity, iterEnt);
+#else
                 miscVar1 = g_api.DealDamage(entity, iterEnt);
+#endif
                 if (iterEnt->hitboxState == 4) {
                     miscVar1 = 0;
                 }
@@ -495,8 +506,18 @@ void HitDetection(void) {
                 miscVar1 &= 0x3FFF;
                 if (entityHit->flags & FLAG_UNK_10) {
                     // Different on PSP vs PSX
+#if defined(MOD_SATURN_MARIA) && !defined(VERSION_PSP)
+                    // Saturn func_0606E0D0: the Saturn Maria's hits sound by
+                    // attack (0x100 without 0x80 is her bank's 0x726)
+                    if (g_PlayableCharacter == PLAYER_MARIA) {
+                        g_api.PlaySfx(
+                            !(iterEnt->hitEffect & 0x80) ? SFX_WEAPON_HIT_A
+                            : iterEnt->hitEffect & 0x100 ? SFX_WEAPON_STAB_A
+                                                         : SFX_WEAPON_STAB_B);
+                    } else
+#endif
 #ifdef VERSION_PSP
-                    if (g_PlayableCharacter == PLAYER_RICHTER) {
+                        if (g_PlayableCharacter == PLAYER_RICHTER) {
 #else
                     if (g_PlayableCharacter != PLAYER_ALUCARD) {
 #endif
@@ -603,7 +624,7 @@ void HitDetection(void) {
                                 miscVar3 = ITEMDROP_TURQUOISE;
                             } else {
                                 miscVar1 =
-                                    g_testCollEnemyLookup[entityHit->enemyId];
+                                    COLL_ENEMY_LOOKUP(entityHit->enemyId);
                             }
                         } else if (miscVar3 & 0x20) {
                             miscVar3 = enemyDef->uncommonItemId;

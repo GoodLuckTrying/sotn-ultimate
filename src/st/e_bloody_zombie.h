@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+// Saturn port: MOD_BLOOD_ONLY leaves out the Bloody Zombie (for a stage that
+// only needs EntityBloodSplatter / EntityBloodDrips, e.g. the Flying Zombie)
 
-#if !(defined(VERSION_PSP) && defined(STAGE_IS_RNO2))
+#if !(defined(VERSION_PSP) && defined(STAGE_IS_RNO2)) &&                       \
+    !defined(MOD_BLOOD_ONLY)
 typedef enum {
     BLOODY_ZOMBIE_INIT,
     BLOODY_ZOMBIE_WALK,
@@ -206,7 +209,8 @@ void EntityBloodSplatter(Entity* self) {
     }
 }
 
-#if !(defined(VERSION_PSP) && defined(STAGE_IS_RNO2))
+#if !(defined(VERSION_PSP) && defined(STAGE_IS_RNO2)) &&                       \
+    !defined(MOD_BLOOD_ONLY)
 static void func_801C53AC(Primitive* prim) {
     switch (prim->next->u2) {
     case 0:

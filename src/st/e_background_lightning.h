@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#if defined(MOD_SATURN) && defined(STAGE_IS_NO3)
+#include "../dra/mod_xa_music.h" // MU_MOD_* (the Saturn tracks)
+#endif
 
 #ifdef VERSION_PSP
 extern s32 E_ID(LIGHTNING_THUNDER);
@@ -236,7 +239,18 @@ void EntityBackgroundLightning(Entity* self) {
             if (playerRealX > 0x300) {
                 g_api.PlaySfx(SET_UNK_90);
                 stopMusicFlag = true;
+#if defined(MOD_SATURN)
+                // Saturn port: the characters' own Entrance themes (Saturn
+                // game.c func_060727DC; DRA's ModStageMusic; the PSP
+                // Maria and the PS1-costume Richter: Alucard's)
+                currentMusicId =
+                    g_PlayableCharacter == PLAYER_MARIA && !MOD_MARIA_PSP()
+                        ? MU_MOD_SOUL_PRISON
+                    : MOD_RIC_COSTUME2() ? MU_MOD_RICHTER_ENTRANCE
+                                         : MU_DRACULAS_CASTLE;
+#else
                 currentMusicId = MU_DRACULAS_CASTLE;
+#endif
                 self->ext.backgroundLightning.unk84++;
             }
             break;

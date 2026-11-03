@@ -277,6 +277,11 @@ void EntitySubwpnInContainer(Entity* self) {
     case 0:
         InitializeEntity(g_EInitObtainable);
         self->hitboxState = 0;
+#if defined(MOD_SATURN_MARIA)
+        if (MOD_MARIA_PSP_NO_SUBWPN(params)) {
+            params = self->params = 0; // Saturn port: as the PSP (game.h)
+        }
+#endif
         // fallthrough
     case 1:
 #ifdef VERSION_PSP

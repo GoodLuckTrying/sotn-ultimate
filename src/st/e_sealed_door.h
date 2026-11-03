@@ -174,6 +174,9 @@ void EntitySealedDoor(Entity* self) {
 
         if (!(((PLAYER.facingLeft != GetSideToPlayer()) & 1) ^ 1) &&
             ((PLAYER.step == 25 && g_PlayableCharacter != PLAYER_ALUCARD) ||
+#if defined(MOD_SATURN)
+             MOD_SPRINTING() ||
+#endif
              PLAYER.step == 1) &&
             SealedDoorIsNearPlayer(self)) {
             // If player does not have the jewel, show the box.

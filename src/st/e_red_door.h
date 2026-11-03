@@ -158,6 +158,9 @@ void EntityRedDoor(Entity* self) {
             break;
         }
         if ((PLAYER.step != 0x19 || g_PlayableCharacter == PLAYER_ALUCARD) &&
+#if defined(MOD_SATURN)
+            !MOD_SPRINTING() &&
+#endif
             PLAYER.step != 1) {
             break;
         }

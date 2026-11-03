@@ -153,9 +153,9 @@ func (img *WritableImage) FlushChanges() error {
 	img.Pvd.DirectoryRecord = img.root.dirent
 	img.Pvd.DirectoryRecord.RecordingDateTime = savedTs
 
-	const Track02Len = 18995
-	const CrapData = 150
-	img.Pvd.VolumeSpaceSize = make32(volumeSpaceSize + CrapData + Track02Len)
+	// Saturn port mod: the image has one track and nothing past the last
+	// file (retail added its 150-sector gap + CD-DA track 2, 18995 sectors)
+	img.Pvd.VolumeSpaceSize = make32(volumeSpaceSize)
 	writeSector(img.writer, pvdLoc, img.mode, SubModeData|SubModeEOR, serializePVD(img.Pvd))
 	writeSector(img.writer, tvdLoc, img.mode, SubModeData|SubModeEOR|SubModeEOF, serializeTVD(DefaultTVD))
 

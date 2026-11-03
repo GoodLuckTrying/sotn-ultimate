@@ -2,9 +2,18 @@
 
 import argparse
 import json
+import os
 
 
 def patch(config_file_name):
+    # Saturn port mod: the dirt bytes are retail alignment junk written at
+    # fixed file offsets. The mod moves DRA's data and rodata, so those
+    # offsets land on live data (one hit MenuHandle's jump table and
+    # crashed the game on closing the menu after a cape change).
+    # mods/sotn-ultimate/tools/build_disc.sh sets SOTN_MOD_NO_DIRT.
+    if os.environ.get("SOTN_MOD_NO_DIRT"):
+        print("dirt: skipped (SOTN_MOD_NO_DIRT)")
+        return
     with open(config_file_name, "r") as f:
         patches = json.load(f)
     for patch in patches:

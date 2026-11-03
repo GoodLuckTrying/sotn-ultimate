@@ -75,6 +75,44 @@ var miscEntries = []lbaEntry{
 	{"OFF_BIN_FGAME2", "BIN/F_GAME2.BIN", lbaOffset},
 	{"OFF_BIN_FGAME", "BIN/F_GAME.BIN", lbaOffset},
 	{"OFF_SD_XA_STR1", "SD/XA_STR1.", lbaOffset},
+	// Saturn port mod: the new weapons 60-63 (mods/sotn-ultimate/tools/build_saturn_weapons.sh)
+	{"OFF_BIN_WEAPON2", "BIN/WEAPON2.BIN", lbaOffset},
+	// Saturn port mod: Richter's alternate costume (mods/sotn-ultimate/tools/build_ric2.py)
+	{"OFF_BIN_RIC", "BIN/RIC.BIN", lbaOffset},
+	{"OFF_BIN_RIC2", "BIN/RIC2.BIN", lbaOffset},
+	// Saturn port mod: boss Richter in the coat (mods/sotn-ultimate/tools/build_bo6ric2.py)
+	{"OFF_BIN_BO6RIC2", "BIN/BO6RIC2.BIN", lbaOffset},
+	// Saturn port mod: Richter in the coat in the endings (mods/sotn-ultimate/tools/build_selric2.py)
+	{"OFF_BIN_SELRIC2", "BIN/SELRIC2.BIN", lbaOffset},
+	// Saturn port mod: the Saturn's playable Maria (mods/sotn-ultimate/tools/build_mar.sh)
+	{"OFF_BIN_MARIA", "BIN/MARIA.BIN", lbaOffset},
+	{"LEN_BIN_MARIA", "BIN/MARIA.BIN", lbaSize},
+	// Saturn port mod: her Saturn voice and sounds (mods/sotn-ultimate/tools/gen_mar_sounds.py)
+	{"OFF_BIN_MARIA_SD", "BIN/MARIA_SD.BIN", lbaOffset},
+	// Saturn port mod: the same with the PSP dub's English clips (gen_mar_sounds.py --psp)
+	{"OFF_BIN_MARIA_SD_PSP", "BIN/MARIA_SD_PSP.BIN", lbaOffset},
+	// Saturn port mod: her PS1-dub bank (a copy of MARIA_SD_PSP.BIN)
+	{"OFF_BIN_MARIA_SD_PS1", "BIN/MARIA_SD_PS1.BIN", lbaOffset},
+	// Saturn port mod: the PSP Maria (src/maria; mods/sotn-ultimate/tools/build_mar2.sh)
+	{"OFF_BIN_MARIA2", "BIN/MARIA2.BIN", lbaOffset},
+	{"LEN_BIN_MARIA2", "BIN/MARIA2.BIN", lbaSize},
+	{"OFF_BIN_MARIA2_SD", "BIN/MARIA2_SD.BIN", lbaOffset},
+	// Saturn port mod: CEN with the PSP Maria fight (mods/sotn-ultimate/tools/build_cenp.sh)
+	{"OFF_BIN_CENP", "BIN/CENP.BIN", lbaOffset},
+	{"LEN_BIN_CENP", "BIN/CENP.BIN", lbaSize},
+	// Saturn port mod: the PSP dub's player grunts (mods/sotn-ultimate/tools/gen_psp_grunts.py)
+	{"OFF_BIN_ALK_PSP", "BIN/ALK_PSP.BIN", lbaOffset},
+	{"OFF_BIN_RIH_PSP", "BIN/RIH_PSP.BIN", lbaOffset},
+	// Saturn port mod: the PSP dub's stage and familiar sound banks (mods/sotn-ultimate/tools/gen_psp_sfx.py)
+	{"OFF_BIN_SFX_PSP", "BIN/SFX_PSP.BIN", lbaOffset},
+	// Saturn port mod: the Saturn-only bestiary pictures (mods/sotn-ultimate/tools/build_monster2.py)
+	{"OFF_BIN_MONSTER2", "BIN/MONSTER2.BIN", lbaOffset},
+	// Saturn port mod: the JP dub's sound banks (mods/sotn-ultimate/tools/gen_jp_sd.py)
+	{"OFF_BIN_JP_SD", "BIN/JP_SD.BIN", lbaOffset},
+	// Saturn port mod: Alucard's sprites + the System screen's options code (mods/sotn-ultimate/tools/build_sysopt.sh)
+	{"OFF_BIN_ARC_F2", "BIN/ARC_F2.BIN", lbaOffset},
+	// Saturn port mod: NO3's bank for Richter's / Maria's horse ride (mods/sotn-ultimate/tools/gen_no3_sounds.py)
+	{"OFF_BIN_NO3RIDE", "BIN/NO3RIDE.BIN", lbaOffset},
 	{"vab0Len", "SD_J010.VB", lbaSize},
 	{"SD_ALK_VH_LEN", "VAB/SD_ALK.VH", lbaSize},
 	{"SD_RIH_VH_LEN", "VAB/SD_RIH.VH", lbaSize},

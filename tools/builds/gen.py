@@ -755,11 +755,21 @@ def add_splat_config(nw: ninja_syntax.Writer, ver: str, file_name: str):
         if ovl_name != "main":
             symbols_lists.append(f"-T {undefined_funcs_auto_path}")
         symbols_lists.append(f"-T {undefined_syms_auto_path}")
+    # Saturn port mod: splat's undefined_syms_auto gives addresses inside a
+    # symbol (asm referencing g_Dialogue + 2 as D_us_801B5552, ...) as
+    # absolute values; when the mod moves the overlay's BSS they go stale.
+    # mods/sotn-ultimate/config/mod_rel_syms.<ver>.<ovl>.txt (mods/sotn-ultimate/tools/check_abs_syms.py)
+    # reassigns them relative to their symbol (the last assignment wins)
+    mod_rel_syms = f"mods/sotn-ultimate/config/mod_rel_syms.{ver}.{ovl_name}.txt"
+    mod_rel_deps = []
+    if platform == "psx" and os.path.exists(mod_rel_syms):
+        symbols_lists.append(f"-T {mod_rel_syms}")
+        mod_rel_deps.append(mod_rel_syms)
     nw.build(
         rule="psx-ld",
         outputs=[output_elf],
         inputs=[ld_path],
-        implicit=[x for x in objs if x],
+        implicit=[x for x in objs if x] + mod_rel_deps,
         variables={
             "ld_flags": ld_flags_extra,
             "map_out": build_path(ver, f"{ovl_name}.map"),

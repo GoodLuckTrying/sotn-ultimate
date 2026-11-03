@@ -11,6 +11,16 @@ use std::path::Path;
 const PSX_TEXTURE_SIZE: usize = 0x40000;
 const MAX_TILEDEFS: usize = 0x1000;
 const MAX_PALETTES: usize = 256;
+
+// Saturn port mod (mods/sotn-ultimate/tools/gdn_assets.py): with SOTN_MOD_UNCAPPED set, pack
+// every tile exactly (no graphic budget, no approximate tiles) and dump all
+// graphics and palettes (graphics.bin, palettes.bin) for the mod's own
+// repacking, which has more texture space than F_STAGE15.BIN alone and only
+// merges near-identical background tiles.
+fn uncapped() -> bool {
+    std::env::var_os("SOTN_MOD_UNCAPPED").is_some()
+}
+const UNCAPPED_LIMIT: usize = 1 << 30;
 const GAME_LOAD_ADDRESS: u32 = 0x0606_6000;
 const COMMON_LOAD_TABLE: u32 = 0x0608_46D4;
 const COMMON_SAVE_TABLE: u32 = 0x0608_4734;
@@ -572,7 +582,7 @@ impl PackedStage {
             return Ok(*id);
         }
         let id = self.graphics.len() as u16;
-        if id as usize >= 1984 {
+        if id as usize >= if uncapped() { 16 * 256 } else { 1984 } {
             return Err(Error::Format(format!(
                 "converted stage exceeds the PSX stage texture capacity at {} graphics",
                 self.graphics.len()
@@ -735,7 +745,7 @@ impl PackedStage {
 }
 
 fn page_for_slot(mut slot: usize) -> usize {
-    for page in 0..8 {
+    for page in 0..16 {
         let rows = if page < 4 { 15 } else { 16 };
         let capacity = rows * 16;
         if slot < capacity {
@@ -747,7 +757,7 @@ fn page_for_slot(mut slot: usize) -> usize {
 }
 
 fn position_for_slot(mut slot: usize) -> (usize, usize, usize) {
-    for page in 0..8 {
+    for page in 0..16 {
         let rows = if page < 4 { 15 } else { 16 };
         let capacity = rows * 16;
         if slot < capacity {
@@ -1266,7 +1276,7 @@ fn write_c_tables(
 }
 
 fn write_texture(output: &Path, packed: &PackedStage) -> Result<()> {
-    let mut pages = vec![vec![0u8; 256 * 256]; 8];
+    let mut pages = vec![vec![0u8; 256 * 256]; 16];
     for (slot, pixels) in packed.graphics.iter().enumerate() {
         let (page, tile_x, tile_y) = position_for_slot(slot);
         for y in 0..16 {
@@ -1275,7 +1285,7 @@ fn write_texture(output: &Path, packed: &PackedStage) -> Result<()> {
         }
     }
     let mut texture = vec![0u8; PSX_TEXTURE_SIZE];
-    for (page, pixels) in pages.iter().enumerate() {
+    for (page, pixels) in pages.iter().enumerate().take(8) {
         for quadrant in 0..4 {
             let qx = (quadrant & 1) * 128;
             let qy = (quadrant >> 1) * 128;
@@ -1297,6 +1307,16 @@ fn write_texture(output: &Path, packed: &PackedStage) -> Result<()> {
         }
     }
     std::fs::write(output.join("F_STAGE15.BIN"), texture)?;
+    if uncapped() {
+        std::fs::write(output.join("graphics.bin"), packed.graphics.concat())?;
+        let mut palettes = Vec::with_capacity(packed.palettes.len() * 32);
+        for palette in &packed.palettes {
+            for colour in palette {
+                palettes.extend_from_slice(&colour.to_le_bytes());
+            }
+        }
+        std::fs::write(output.join("palettes.bin"), palettes)?;
+    }
     Ok(())
 }
 
@@ -1342,16 +1362,140 @@ fn internal_transitions(bounds: &[Bounds]) -> Vec<TransitionReport> {
     transitions
 }
 
+/// Saturn port mod: what differs between the stages this converts. Stage 15
+/// (Underground Garden) carries the original conversion's extras (its common
+/// loading/save rooms as rooms 4-6, the room-0 alias, the shared backdrop,
+/// the fountain window and the masonry sprite); stage 16 (Cursed Prison) is
+/// its two ordinary rooms only (the mod builds the special rooms from the
+/// PS1's shared tilesets).
+struct StageProfile {
+    ordinary_rooms: usize,
+    adjacency: &'static [(usize, usize, &'static str)],
+    garden_extras: bool,
+    /// room 0's layer 1, the Garden's red mist (shared_backdrop.*)
+    backdrop: bool,
+    /// room 0's background tiles kept exact past the tile budget (the
+    /// fountain), as (x first, x last, y first, y last) in tiles
+    preserve_window: Option<(usize, usize, usize, usize)>,
+    entity_layouts: &'static [(usize, u32)],
+}
+
+const STAGE15_PROFILE: StageProfile = StageProfile {
+    ordinary_rooms: 4,
+    adjacency: &[
+        (0, 1, "right"),
+        (1, 0, "left"),
+        (1, 3, "right"),
+        (2, 3, "left"),
+        (3, 1, "left"),
+        (3, 2, "right"),
+    ],
+    garden_extras: true,
+    backdrop: true,
+    preserve_window: Some((8, 14, 20, 28)),
+    entity_layouts: &[
+        (1, 0x060F10F8),
+        (2, 0x060F1328),
+        (3, 0x060F1418),
+        (4, 0x060F1468),
+        (48, 0x060F0F0E),
+        (49, 0x060F0EC8),
+        (50, 0x060F0F54),
+    ],
+};
+
+const STAGE16_PROFILE: StageProfile = StageProfile {
+    ordinary_rooms: 2,
+    adjacency: &[(0, 1, "left"), (1, 0, "right")],
+    garden_extras: false,
+    backdrop: false,
+    preserve_window: None,
+    entity_layouts: &[
+        (1, 0x060E951C),
+        (2, 0x060E97E2),
+        (48, 0x060E9332),
+        (49, 0x060E92EC),
+        (50, 0x060E9378),
+        (51, 0x060E93BE),
+        (52, 0x060E93DC),
+    ],
+};
+
+/// The inverted castle's Soul Prison: STAGE_16's rooms rotated 180 degrees
+/// (same order, mirrored cells) and recoloured.
+const RSTAGE16_PROFILE: StageProfile = StageProfile {
+    ordinary_rooms: 2,
+    adjacency: &[(0, 1, "right"), (1, 0, "left")],
+    garden_extras: false,
+    backdrop: false,
+    preserve_window: None,
+    entity_layouts: &[
+        (1, 0x060E8DF8),
+        (2, 0x060E90BE),
+        (48, 0x060E8D1C),
+        (49, 0x060E8CD6),
+        (50, 0x060E8D62),
+        (51, 0x060E8DA8),
+        (52, 0x060E8DC6),
+    ],
+};
+
+/// The inverted castle's Hell Garden: STAGE_15 rotated 180 degrees. Its
+/// ordinary rooms, the red mist (room 0's layer 1) and the fountain window
+/// rotated (room 0 is 144x32 tiles); not the special rooms (the mod builds
+/// them from the PS1's shared tilesets) or the masonry sprite (unused).
+const RSTAGE15_PROFILE: StageProfile = StageProfile {
+    ordinary_rooms: 4,
+    adjacency: &[
+        (0, 1, "left"),
+        (1, 0, "right"),
+        (1, 3, "left"),
+        (2, 3, "right"),
+        (3, 1, "right"),
+        (3, 2, "left"),
+    ],
+    garden_extras: false,
+    backdrop: true,
+    preserve_window: Some((129, 135, 3, 11)),
+    entity_layouts: &[
+        (1, 0x060ED440),
+        (2, 0x060ED738),
+        (3, 0x060ED7F6),
+        (4, 0x060ED846),
+        (48, 0x060ED364),
+        (49, 0x060ED31E),
+        (50, 0x060ED3AA),
+    ],
+};
+
+fn stage_profile(prg_path: &Path) -> Result<&'static StageProfile> {
+    let name = prg_path
+        .file_name()
+        .map(|name| name.to_string_lossy().to_uppercase())
+        .unwrap_or_default();
+    match name.as_str() {
+        "STAGE_15.PRG" => Ok(&STAGE15_PROFILE),
+        "STAGE_16.PRG" => Ok(&STAGE16_PROFILE),
+        "RSTAGE15.PRG" => Ok(&RSTAGE15_PROFILE),
+        "RSTAGE16.PRG" => Ok(&RSTAGE16_PROFILE),
+        _ => Err(Error::Format(format!("no conversion profile for {name}"))),
+    }
+}
+
 pub fn convert(
     prg_path: &Path,
     map_path: &Path,
     output: &Path,
     scale_model: ScaleModel,
 ) -> Result<()> {
+    let profile = stage_profile(prg_path)?;
     let source_dir = output.join("saturn-source");
     let manifest = map::extract(prg_path, map_path, &source_dir)?;
-    if manifest.tables.rooms < 4 {
-        return Err(Error::Format("Stage 15 needs at least four rooms".to_string()));
+    if (manifest.tables.rooms as usize) < profile.ordinary_rooms {
+        return Err(Error::Format(format!(
+            "the stage needs at least {} rooms",
+            profile.ordinary_rooms
+        )));
     }
     let prg_path = map::overlay_for(prg_path, map_path);
     let prg = std::fs::read(&prg_path)?;
@@ -1362,7 +1506,9 @@ pub fn convert(
     let game = std::fs::read(disc_dir.join("GAME.PRG"))?;
     let load_map = std::fs::read(disc_dir.join("LOAD.MAP"))?;
     std::fs::create_dir_all(output)?;
-    write_masonry_sprite(&prg, disc_dir, output)?;
+    if profile.garden_extras {
+        write_masonry_sprite(&prg, disc_dir, output)?;
+    }
     let loading_room = common_layers(&game, &load_map, COMMON_LOAD_TABLE)?;
     let save_room = common_layers(&game, &load_map, COMMON_SAVE_TABLE)?;
     let loading_collision = common_collision(
@@ -1377,23 +1523,15 @@ pub fn convert(
         COMMON_SAVE_COLLISION_SIZE,
         "save-room",
     )?;
-    let bounds = read_bounds(&prg, 4)?;
+    let bounds = read_bounds(&prg, profile.ordinary_rooms)?;
     let transitions = internal_transitions(&bounds);
-    let expected = [
-        (0, 1, "right"),
-        (1, 0, "left"),
-        (1, 3, "right"),
-        (2, 3, "left"),
-        (3, 1, "left"),
-        (3, 2, "right"),
-    ];
     if transitions
         .iter()
         .map(|transition| (transition.from, transition.to, transition.edge))
-        .ne(expected)
+        .ne(profile.adjacency.iter().copied())
     {
         return Err(Error::Format(format!(
-            "Stage 15 ordinary-room adjacency changed: {transitions:?}"
+            "ordinary-room adjacency changed: {transitions:?}"
         )));
     }
     let mut packed = PackedStage::default();
@@ -1411,6 +1549,9 @@ pub fn convert(
     packed.tiledef_ids.insert((0, 0, 0, 0), 0);
     for room in 0..bounds.len() {
         for layer in 0..3 {
+            if layer == 1 && !profile.garden_extras {
+                continue; // no layer 1 (the Garden's is its backdrop)
+            }
             write_native_layer(&manifest, &map_data, output, room, layer)?;
         }
     }
@@ -1424,11 +1565,12 @@ pub fn convert(
             map
         },
     };
-    for (room, source) in [
-        (4usize, &loading_room),
-        (5usize, &loading_room),
-        (6usize, &save_room),
-    ] {
+    let specials: &[(usize, &Vec<DecodedLayer>)] = if profile.garden_extras {
+        &[(4usize, &loading_room), (5usize, &loading_room), (6usize, &save_room)]
+    } else {
+        &[]
+    };
+    for &(room, source) in specials {
         write_native_decoded_layer(output, room, 0, &source[0])?;
         write_native_decoded_layer(output, room, 1, &blank_native)?;
         write_native_decoded_layer(output, room, 2, &source[1])?;
@@ -1485,12 +1627,22 @@ pub fn convert(
                         0
                     };
                     *collision_types.entry(hit).or_insert(0) += 1;
-                    let exact_limit =
-                        if layer == 0 { 1984 } else { decorative_graphic_limit };
-                    let preserve_exact = room == 0
-                        && layer == 2
-                        && (8..=14).contains(&tile_x)
-                        && (20..=28).contains(&tile_y);
+                    let exact_limit = if uncapped() {
+                        UNCAPPED_LIMIT
+                    } else if layer == 0 {
+                        1984
+                    } else {
+                        decorative_graphic_limit
+                    };
+                    let preserve_exact = profile.preserve_window.map_or(
+                        false,
+                        |(x0, x1, y0, y1)| {
+                            room == 0
+                                && layer == 2
+                                && (x0..=x1).contains(&tile_x)
+                                && (y0..=y1).contains(&tile_y)
+                        },
+                    );
                     let id = packed.intern_tile(
                         pixels,
                         palette,
@@ -1547,32 +1699,17 @@ pub fn convert(
         }));
     }
 
-    for (id, left, top, params, source, saturn_collision) in [
-        (
-            4usize,
-            3u8,
-            44u8,
-            0x10u8,
-            &loading_room,
-            &loading_collision,
-        ),
-        (
-            5usize,
-            3u8,
-            45u8,
-            0x10u8,
-            &loading_room,
-            &loading_collision,
-        ),
-        (
-            6usize,
-            13u8,
-            45u8,
-            0x22u8,
-            &save_room,
-            &save_collision,
-        ),
-    ] {
+    let special_layers: Vec<(usize, u8, u8, u8, &Vec<DecodedLayer>, &Vec<u8>)> =
+        if profile.garden_extras {
+            vec![
+                (4usize, 3u8, 44u8, 0x10u8, &loading_room, &loading_collision),
+                (5usize, 3u8, 45u8, 0x10u8, &loading_room, &loading_collision),
+                (6usize, 13u8, 45u8, 0x22u8, &save_room, &save_collision),
+            ]
+        } else {
+            Vec::new()
+        };
+    for (id, left, top, params, source, saturn_collision) in special_layers {
         let mut layer_defs = Vec::new();
         for (plane, decoded) in source.iter().enumerate() {
             let raster = render_decoded_layer(
@@ -1644,6 +1781,7 @@ pub fn convert(
         }));
     }
 
+    if profile.backdrop {
     let mut backdrop = render_layer(&manifest, &map_data, 0, 1, scale_model)?;
     const STAGE15_BACK_COLOR: u16 = 0x1406;
     for pixel in &mut backdrop.pixels {
@@ -1714,6 +1852,7 @@ pub fn convert(
         output_height: backdrop.height,
         lossy_tiles: backdrop_lossy,
     });
+    }
 
     write_json(&output.join("rooms.layers.json"), &layer_json)?;
     let mut room_json: Vec<_> = bounds
@@ -1728,6 +1867,7 @@ pub fn convert(
             })
         })
         .collect();
+    if profile.garden_extras {
     room_json.extend([
         json!({
             "left": 3, "top": 44, "right": 3, "bottom": 44,
@@ -1745,6 +1885,7 @@ pub fn convert(
             "objGfxId": 0, "objLayoutId": 50
         }),
     ]);
+    }
     while room_json.len() < 20 {
         room_json.push(json!({
             "left": 0x3F, "top": 0x3F, "right": 0, "bottom": 0,
@@ -1759,23 +1900,17 @@ pub fn convert(
         "tileLayoutId": 0, "tilesetId": 0,
         "objGfxId": 0, "objLayoutId": 1
     });
-    room_json[10] = room0_alias.clone();
-    room_json.push(room0_alias);
+    if profile.garden_extras {
+        room_json[10] = room0_alias.clone();
+        room_json.push(room0_alias);
+    }
     room_json.push(json!({
         "left": 0x40, "top": 0, "right": 0, "bottom": 0,
         "tileLayoutId": 0, "tilesetId": 0, "objGfxId": 0, "objLayoutId": 0
     }));
     write_json(&output.join("rooms.roomdef.json"), &room_json)?;
     let mut entity_layouts = Vec::new();
-    for (layout_id, address) in [
-        (1, 0x060F10F8),
-        (2, 0x060F1328),
-        (3, 0x060F1418),
-        (4, 0x060F1468),
-        (48, 0x060F0F0E),
-        (49, 0x060F0EC8),
-        (50, 0x060F0F54),
-    ] {
+    for &(layout_id, address) in profile.entity_layouts {
         let entities = write_entity_layout(&prg, output, layout_id, address)?;
         entity_layouts.push((layout_id, entities));
     }

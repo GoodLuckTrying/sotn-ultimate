@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "rcen.h"
+#include "mod_psp_script.h" // the PSP dub toggle's script copies
 #include <cutscene.h>
 
 enum DialogueSteps {

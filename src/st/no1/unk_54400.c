@@ -9,11 +9,18 @@ static u8 anim1[] = {
 static s16 D_us_801831F4[] = {0, 3, 4, 3, 0, -3, -4, -3};
 static s16 D_us_80183204[] = {-16, -12, 0, 12, 16, 12, 0, -12};
 
+#if defined(MOD_OUTER_WALL_GHOST)
+#include "../../../mods/sotn-ultimate/src/castle/unk_54400_mod_ghost.h"
+#endif
+
 void func_us_801D4558(Entity* self) {
     Entity* tempEntity;
     s16 tempVar;
     s16 posX, posY;
 
+#if defined(MOD_OUTER_WALL_GHOST)
+    GhostLoadGfx(self->step == 0);
+#endif
     if (self->flags & FLAG_DEAD) {
         EntityExplosionSpawn(0, 0);
         return;
@@ -30,7 +37,33 @@ void func_us_801D4558(Entity* self) {
     }
     switch (self->step) {
     case 0:
+#if defined(MOD_OUTER_WALL_GHOST)
+        // mod: params bits 0-2 = the weathers it appears in (1 rain, 2 clear,
+        // 4 fog: g_CastleFlags[NO1_WEATHER] & 0x7F is 0 / 1 / 2, as the sky
+        // and rain entities read it); 0 = every weather
+        // Relic gate: every ghost stays dormant (step 1, scale 0, no hitbox)
+        // until Soul of Wolf is found. params bit 8 (A, the relic nook): if
+        // the relic is not found yet when it spawns, it skips the weather
+        // rule and fades in the moment the relic is collected (unk84 = 1),
+        // wherever the player is; otherwise the weather rule applies.
+        // Once the Ghost Card is found the ghosts are gone (it is your ally).
+        if (g_Status.relics[RELIC_GHOST_CARD] & RELIC_FLAG_FOUND) {
+            DestroyEntity(self);
+            return;
+        }
+        if ((self->params & 0x100) &&
+            !(g_Status.relics[RELIC_SOUL_OF_WOLF] & RELIC_FLAG_FOUND)) {
+            self->ext.et_801D4558.unk84 = 1;
+        } else if ((self->params & 7) &&
+                   !(self->params & (1 << (g_CastleFlags[NO1_WEATHER] & 3)))) {
+            DestroyEntity(self);
+            return;
+        }
+#endif
         InitializeEntity(D_us_80180B18);
+#if defined(MOD_OUTER_WALL_GHOST)
+        self->unk5A = GHOST_UNK5A; // the copy at 352,256 (see GhostLoadGfx)
+#endif
         self->ext.et_801D4558.unk80 = self->hitboxState;
         self->hitboxState = 0;
         self->drawFlags = ENTITY_SCALEX | ENTITY_SCALEY;
@@ -42,6 +75,18 @@ void func_us_801D4558(Entity* self) {
         break;
 
     case 1:
+#if defined(MOD_OUTER_WALL_GHOST)
+        // dormant until Soul of Wolf is found; never with the Ghost Card
+        if (!(g_Status.relics[RELIC_SOUL_OF_WOLF] & RELIC_FLAG_FOUND) ||
+            (g_Status.relics[RELIC_GHOST_CARD] & RELIC_FLAG_FOUND)) {
+            break;
+        }
+        if (self->ext.et_801D4558.unk84) { // A: relic found this visit
+            self->step++;
+            self->ext.et_801D4558.unk7C = 0;
+            break;
+        }
+#endif
         tempVar = (s16)self->params & 0xF8;
         if (tempVar > GetDistanceToPlayerX() &&
             tempVar > GetDistanceToPlayerY()) {
@@ -129,9 +174,15 @@ static u8 anim2[] = {
 };
 
 void func_us_801D4950(Entity* self) {
+#if defined(MOD_OUTER_WALL_GHOST)
+    GhostLoadGfx(false);
+#endif
     switch (self->step) {
     case 0:
         InitializeEntity(D_us_80180B18);
+#if defined(MOD_OUTER_WALL_GHOST)
+        self->unk5A = GHOST_UNK5A;
+#endif
         self->blendMode = BLEND_TRANSP;
         self->hitboxState = 0;
         break;

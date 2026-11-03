@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include <stage.h>
 
+// Saturn port (needs MOD_SATURN from stage.h)
+#if defined(MOD_SATURN)
+// Saturn port: the sixth warp room (2,45), next to the Underground Garden,
+// gets its entities from layout 6 (mod_layout.h; mod_rooms.h has the rooms)
+#define MOD_LAYOUT_ID 6
+#endif
+
 enum Palettes {
     PAL_NONE = 0,
     PAL_SMALL_ROCKS = 0x21A,

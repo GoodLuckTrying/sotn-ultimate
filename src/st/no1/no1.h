@@ -2,6 +2,12 @@
 #include "stage.h"
 
 #define STAGE_IS_NO1
+#if defined(MOD_OUTER_WALL_GHOST)
+// the cut Outer Wall "Ghost": the tower (room 13, layout 14) gets a layout
+// copy with three of them (mod_layout.h,
+// mods/sotn-ultimate/tools/gen_mod_layouts.py)
+#define MOD_LAYOUT_ID 14
+#endif
 
 void EntityExplosionVariants(Entity* entity);
 void EntityGreyPuff(Entity* entity);

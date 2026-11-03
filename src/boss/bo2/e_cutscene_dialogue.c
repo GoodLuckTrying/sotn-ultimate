@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "bo2.h"
+#include "mod_psp_script.h" // the PSP dub toggle's script copies
 #include <cutscene.h>
 
 extern Dialogue g_Dialogue;
@@ -28,3 +29,9 @@ INCLUDE_RODATA("boss/bo2/nonmatchings/e_cutscene_dialogue", D_us_801A1F6C);
 INCLUDE_RODATA("boss/bo2/nonmatchings/e_cutscene_dialogue", D_us_801A1F78);
 
 INCLUDE_ASM("boss/bo2/nonmatchings/e_cutscene_dialogue", EntityCutsceneDialogue);
+
+#ifdef MOD_SATURN
+// the PSP English script: room for the lines that do not fit the retail
+// script's bytes (mods/sotn-ultimate/tools/psp_script.py; empty when not
+// needed)
+#endif

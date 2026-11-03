@@ -6,6 +6,12 @@
 
 #define STAGE_IS_RWRP
 
+#if defined(MOD_SATURN)
+// Saturn port: the sixth warp room (61,18), next to the Hell Garden, gets its
+// entities from layout 6 (mod_layout.h; mod_rooms.h has the rooms)
+#define MOD_LAYOUT_ID 6
+#endif
+
 enum Palettes {
     PAL_NONE,
     PAL_SMALL_ROCKS = 0x2E8,

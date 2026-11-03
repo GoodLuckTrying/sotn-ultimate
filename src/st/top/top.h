@@ -5,6 +5,10 @@
 #include <stage.h>
 
 #define STAGE_IS_TOP
+#if defined(MOD_SATURN)
+// Saturn port: room layout with the God Speed Shoes orb (mod_layout.h)
+#define MOD_LAYOUT_ID 1
+#endif
 #define RIC_SPRITE_COUNT 197 // useful to sync PSX and PSP
 
 enum Palettes {

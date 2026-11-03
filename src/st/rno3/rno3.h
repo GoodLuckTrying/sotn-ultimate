@@ -7,6 +7,10 @@
 #define STAGE_IS_RNO3
 #define INVERTED_STAGE
 
+#if defined(MOD_SATURN_CASTLE)
+#include "../../../mods/sotn-ultimate/src/castle/rno3/rno3_mod_shaft.h"
+#endif
+
 enum Palettes {
     PAL_NONE,
     PAL_FIRE_WARG = 0x200,

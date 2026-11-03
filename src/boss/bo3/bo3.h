@@ -5,6 +5,14 @@
 #include <stage.h>
 
 #define STAGE_IS_BO3
+#if defined(MOD_SATURN)
+// Saturn port: Crystal cloak's room (room 3, entered right after Scylla)
+// also holds Glaring Cloth (mod_layout.h). Same extra prize index and
+// collected flag as NO4's copy of the room, see src/st/no4/no4.h.
+#define MOD_LAYOUT_ID 25
+#define MOD_EXTRA_PRIZE_INDEX 40
+#define MOD_EXTRA_PRIZE_DROP (0x80 + NUM_HAND_ITEMS + ITEM_GLARING_CLOTH)
+#endif
 
 enum Palettes {
     PAL_NONE,

@@ -7,6 +7,16 @@
 
 #include "stage.h"
 
+// Saturn port (needs MOD_SATURN from stage.h)
+#if defined(MOD_SATURN)
+// Saturn port: the small dead-end room (20,51), layout 6, holds the Song
+// Lyrics Card (mod_layout.h) as prize index 0x15, as on the Saturn (CAT has
+// 21 PrizeDrops; collected flag 0x80 + 0x15 = 0x95, below CHI's 0xB0).
+#define MOD_LAYOUT_ID 6
+#define MOD_EXTRA_PRIZE_INDEX 0x15
+#define MOD_EXTRA_PRIZE_DROP (0x80 + NUM_HAND_ITEMS + ITEM_SONG_LYRICS_CARD)
+#endif
+
 #include "../pfn_entity_update.h"
 
 enum Palettes {

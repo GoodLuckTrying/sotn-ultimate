@@ -36,6 +36,13 @@ void EntityRoomForeground(Entity* self) {
             self->drawFlags |= ENTITY_ROTATE;
             self->rotate = ROT(180);
         }
+#if defined(MOD_SATURN)
+        // the moved save room's picture, with its right doorway as tall as
+        // the shaft alcove outside (e_red_door.c, frame 3 like animset 0xC)
+        if (self->params == 4 && g_Tilemap.left == 60 && g_Tilemap.top == 20) {
+            self->animSet = ANIMSET_OVL(14);
+        }
+#endif
     }
     AnimateEntity(objInit->animFrames, self);
 }

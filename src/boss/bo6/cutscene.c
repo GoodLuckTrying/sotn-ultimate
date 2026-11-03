@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "bo6.h"
+#include "mod_psp_script.h" // the PSP dub toggle's script copies
 #include <cutscene.h>
 
 extern Dialogue g_Dialogue;
@@ -28,3 +29,9 @@ extern const char* actor_names[];
 #include "../../st/cutscene_scale_avatar.h"
 
 INCLUDE_ASM("boss/bo6/nonmatchings/cutscene", func_us_801A7DC0);
+
+#ifdef MOD_SATURN
+// the PSP English script: room for the lines that do not fit the retail
+// script's bytes (mods/sotn-ultimate/tools/psp_script.py; empty when not
+// needed)
+#endif

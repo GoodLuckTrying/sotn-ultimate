@@ -6,6 +6,12 @@
 
 #define STAGE_IS_RNO4
 
+#if defined(MOD_SATURN)
+// Saturn port: room 5 (26,29)-(26,30) gets the red door to the Soul Prison
+// (layout 6 copy, mod_layout.h; mods/sotn-ultimate/tools/gen_prs_links.py)
+#define MOD_LAYOUT_ID 6
+#endif
+
 enum Palettes {
     PAL_NONE,
     PAL_UNK_224 = 0x224,

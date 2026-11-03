@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "mar.h"
+#include "mod_psp_script.h" // the PSP dub toggle's script copies
 #include "../../st/pfn_entity_update.h"
 #include <cutscene.h>
 

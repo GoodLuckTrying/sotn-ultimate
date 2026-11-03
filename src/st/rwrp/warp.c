@@ -33,6 +33,19 @@ static Point16 WarpRoomCoords[] = {
     {0x30, 0x19}, {0x1C, 0x13}, {0x04, 0x2E}, {0x17, 0x33}, {0x1A, 0x2A},
 };
 
+#if defined(MOD_SATURN)
+// Saturn port: the Saturn's six inverted warp rooms (RWARP.PRG). The sixth,
+// next to the Hell Garden, joins the cycle once visited (its RWRP_UNLOCKS
+// bit, 1 << 5). The retail table stays in the data section.
+static const Point16 ModWarpRoomCoords[] = {
+    {0x30, 0x19}, {0x1C, 0x13}, {0x04, 0x2E},
+    {0x17, 0x33}, {0x1A, 0x2A}, {0x3D, 0x12}, // Hell Garden
+};
+#define WARP_ROOM_COORDS ModWarpRoomCoords
+#else
+#define WARP_ROOM_COORDS WarpRoomCoords
+#endif
+
 // the room the player will be warping to
 s32 DestinationWarpRoom;
 // the amplitude of the current background phase
@@ -242,8 +255,8 @@ void EntityRWarpRoom(Entity* self) {
     case 5:
         // Perform the actual warp
         temp = self->params + 1;
-        for (i = 0; i < LEN(WarpRoomCoords); i++, temp++) {
-            if (temp > LEN(WarpRoomCoords) - 1) {
+        for (i = 0; i < LEN(WARP_ROOM_COORDS); i++, temp++) {
+            if (temp > LEN(WARP_ROOM_COORDS) - 1) {
                 temp = 0;
             }
             if (g_CastleFlags[RWRP_UNLOCKS] & (1 << temp)) {
@@ -251,7 +264,7 @@ void EntityRWarpRoom(Entity* self) {
             }
         }
         DestinationWarpRoom = temp;
-        warpCoords = &WarpRoomCoords[temp];
+        warpCoords = &WARP_ROOM_COORDS[temp];
         moveX = warpCoords->x - g_Tilemap.left;
         moveY = warpCoords->y - g_Tilemap.top;
         FntPrint("move_room%x\n", DestinationWarpRoom);
@@ -330,7 +343,7 @@ void EntityRWarpRoom(Entity* self) {
         }
         break;
     default:
-        warpCoords = &WarpRoomCoords[DestinationWarpRoom];
+        warpCoords = &WARP_ROOM_COORDS[DestinationWarpRoom];
         moveX = warpCoords->x - g_Tilemap.left;
         moveY = warpCoords->y - g_Tilemap.top;
         FntPrint("move_room%x\n", DestinationWarpRoom);

@@ -31,6 +31,12 @@ static Point16 WarpRoomCoords[] = {
     {0x25, 0x15}, // Olrox's Quarters
 };
 
+#if defined(MOD_SATURN_CASTLE)
+#include "../../../mods/sotn-ultimate/src/castle/warp_mod_rooms.h"
+#else
+#define WARP_ROOM_COORDS WarpRoomCoords
+#endif
+
 // Mask for all of the statuses where the UP button will
 // be ignored when in warp position or on the warp platform
 //
@@ -210,8 +216,8 @@ void EntityWarpRoom(Entity* self) {
     case 4:
         // Perform the actual warp
         move_room = self->params + 1;
-        for (i = 0; i < LEN(WarpRoomCoords); i++, move_room++) {
-            if (move_room > LEN(WarpRoomCoords) - 1) {
+        for (i = 0; i < LEN(WARP_ROOM_COORDS); i++, move_room++) {
+            if (move_room > LEN(WARP_ROOM_COORDS) - 1) {
                 move_room = 0;
             }
             if (g_CastleFlags[WRP_UNLOCKS] & (1 << move_room)) {
@@ -219,7 +225,7 @@ void EntityWarpRoom(Entity* self) {
             }
         }
         DestinationWarpRoom = move_room;
-        warpCoords = &WarpRoomCoords[move_room];
+        warpCoords = &WARP_ROOM_COORDS[move_room];
         moveX = warpCoords->x - g_Tilemap.left;
         moveY = warpCoords->y - g_Tilemap.top;
         FntPrint("move_room%x\n", DestinationWarpRoom);
@@ -271,7 +277,7 @@ void EntityWarpRoom(Entity* self) {
         break;
 
     default:
-        warpCoords = &WarpRoomCoords[DestinationWarpRoom];
+        warpCoords = &WARP_ROOM_COORDS[DestinationWarpRoom];
         moveX = warpCoords->x - g_Tilemap.left;
         moveY = warpCoords->y - g_Tilemap.top;
         FntPrint("move_room%x\n", DestinationWarpRoom);

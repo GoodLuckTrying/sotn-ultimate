@@ -53,6 +53,10 @@ void EntityCutsceneSupport(Entity* self) {
     self->posY.i.hi = player->posY.i.hi - 1;
 
     if ((self->step != 14) && g_SkipCutscene && g_IsCutsceneDone &&
+#if defined(MOD_SATURN)
+        // step 16 (below) comes after the skip's step 15: not back to it
+        (self->step != 16) &&
+#endif
         (self->step > 4)) {
         self->step = 15;
         self->animSet = ANIMSET_DRA(0);
@@ -236,9 +240,26 @@ void EntityCutsceneSupport(Entity* self) {
         player->animCurFrame = 7;
         if (g_CutsceneFlags & 4) {
             g_Player.padSim = PAD_LEFT;
+#if defined(MOD_SATURN)
+            // Saturn port: START skips the dialogue (MOD_SKIP_ANY_CUTSCENE),
+            // which reaches this flag while the cutscene still runs: a START
+            // then paused the game under it (no HUD, so it looked frozen)
+            // and could drop the fight music starting meanwhile. Pausing
+            // comes back once the cutscene has given control back
+            SetStep(16);
+            break;
+#endif
             DestroyEntity(self);
             g_PauseAllowed = true;
         }
         break;
+#if defined(MOD_SATURN)
+    case 16:
+        if (!g_CutsceneHasControl) {
+            DestroyEntity(self);
+            g_PauseAllowed = true;
+        }
+        break;
+#endif
     }
 }

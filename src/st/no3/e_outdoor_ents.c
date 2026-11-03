@@ -2,11 +2,25 @@
 #include "no3.h"
 #include <scratchpad.h>
 
+#if defined(MOD_SATURN_CASTLE)
+#include "../../../mods/sotn-ultimate/src/castle/e_outdoor_ents_mod_horse.h"
+#endif
+
 // pushes alucard to the right
 void EntityPushAlucard(Entity* self) {
     Entity* player = &PLAYER;
     Tilemap* tilemap = &g_Tilemap;
 
+#if defined(MOD_SATURN)
+    if (self->params & 0x100) {
+        ModHorseRear(self);
+        return;
+    }
+    if (g_PlayableCharacter != PLAYER_ALUCARD) {
+        ModHorseRide(self);
+        return;
+    }
+#endif
     switch (self->step) {
     case 0:
         InitializeEntity(g_EInitSpawner);

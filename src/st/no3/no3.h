@@ -2,6 +2,12 @@
 #include "stage.h"
 
 #define STAGE_IS_NO3
+#if defined(MOD_SATURN)
+// Saturn port: the first room's entity list (layout 1, mod_layout.h) with the
+// Power of Wolf orb in its own slot: it shared the trapdoor's, which the
+// Saturn rule keeps alive (mods/sotn-ultimate/tools/gen_mod_layouts.py)
+#define MOD_LAYOUT_ID 1
+#endif
 
 void EntityExplosionVariants(Entity* entity);
 void EntityGreyPuff(Entity* entity);

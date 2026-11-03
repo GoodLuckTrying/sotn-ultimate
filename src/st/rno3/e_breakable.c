@@ -17,8 +17,34 @@ static u8 blend_modes[8] = {
 // Stripped on PSP
 static u8 unused[] = {0, 0, 0, 0, 0, 0, 0, 0};
 
+#if defined(MOD_SATURN)
+// Saturn port: the shaft's candelabras (type 2), as the Saturn's inverted
+// Entrance draws them (RSTAGE01 candle type 3): the Saturn's tall candelabra
+// with its glow, hanging from the ceiling (drawn turned around like RNO3's
+// own candles). EntityModBreakable is the shared Saturn candle code
+// (../e_breakable.h) on rodata copies of the tables with type 2 added; the
+// retail tables above stay in the data section.
+void EntityModBreakable(Entity* entity);
+#define MOD_CANDLE_TYPE 2
+#endif
+
 void EntityBreakable(Entity* entity) {
     u16 breakableType = entity->params >> 12;
+#if defined(MOD_SATURN)
+    if (breakableType == MOD_CANDLE_TYPE) {
+        if (entity->step && entity->hitParams) {
+            // it becomes the drop, which is drawn upright
+            entity->drawFlags = ENTITY_DEFAULT;
+            entity->rotate = ROT(0);
+            EntityModBreakable(entity);
+            return;
+        }
+        EntityModBreakable(entity);
+        entity->drawFlags = ENTITY_ROTATE;
+        entity->rotate = ROT(180);
+        return;
+    }
+#endif
     if (entity->step) {
         AnimateEntity(g_eBreakableAnimations[breakableType], entity);
         if (entity->hitParams) { // If the candle is destroyed
@@ -44,3 +70,7 @@ void EntityBreakable(Entity* entity) {
         entity->rotate = ROT(180);
     }
 }
+
+#if defined(MOD_SATURN_CASTLE)
+#include "../../../mods/sotn-ultimate/src/castle/rno3/e_breakable_mod_sconce.h"
+#endif

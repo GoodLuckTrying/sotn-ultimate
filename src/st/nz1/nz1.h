@@ -5,6 +5,13 @@
 #include <stage.h>
 
 #define STAGE_IS_NZ1
+#if defined(MOD_SATURN)
+// Saturn port: the two vessels' room (49,8)-(53,9), layout 5, also holds
+// Rainbow Mantle (mod_layout.h) as prize index 12, as on the Saturn.
+#define MOD_LAYOUT_ID 5
+#define MOD_EXTRA_PRIZE_INDEX 12
+#define MOD_EXTRA_PRIZE_DROP (0x80 + NUM_HAND_ITEMS + ITEM_RAINBOW_MANTLE)
+#endif
 
 enum Palettes {
     PAL_NONE,

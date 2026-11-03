@@ -5,6 +5,12 @@
 #include <stage.h>
 
 #define STAGE_IS_RNO0
+
+#if defined(MOD_SATURN)
+// Saturn port: room 0 (37,27)-(42,29) gets the red door to the Soul Prison
+// (layout 1 copy, mod_layout.h; mods/sotn-ultimate/tools/gen_prs_links.py)
+#define MOD_LAYOUT_ID 1
+#endif
 #define INVERTED_STAGE
 
 enum Palettes {

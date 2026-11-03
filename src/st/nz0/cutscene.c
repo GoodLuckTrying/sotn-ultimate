@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "nz0.h"
+#include "mod_psp_script.h" // the PSP dub toggle's script copies
 #include "../pfn_entity_update.h"
 #include <cutscene.h>
 
@@ -519,3 +520,9 @@ void EntityCutscene(Entity* self) {
         break;
     }
 }
+
+#ifdef MOD_SATURN
+// the PSP English script: room for the lines that do not fit the retail
+// script's bytes (mods/sotn-ultimate/tools/psp_script.py; empty when not
+// needed)
+#endif

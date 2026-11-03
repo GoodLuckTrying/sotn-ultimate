@@ -2,6 +2,12 @@
 #include "stage.h"
 
 #define STAGE_IS_NO0
+#if defined(MOD_SATURN)
+// Saturn port: the Cursed Prison's red door in room 0 (21,34)-(26,36),
+// layout 1 (mod_layout.h); its doorway, loading room and transition are in
+// mod_rooms.h (mods/sotn-ultimate/tools/gen_prs_links.py)
+#define MOD_LAYOUT_ID 1
+#endif
 
 void EntityExplosionVariants(Entity* entity);
 void EntityGreyPuff(Entity* entity);

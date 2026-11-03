@@ -32,7 +32,12 @@ static u8 SetCutsceneScript(u8* script) {
         g_api.AllocPrimitives(PRIM_SPRT, NUM_CUTSCENE_PRIM);
 
     if (g_Dialogue.primIndex[2] != -1) {
+#if defined(MOD_PSP_SCRIPT)
+        // Saturn port: the PSP dub toggle's script copies (mod_psp_script.h)
+        g_Dialogue.scriptCur = ModPspScript(script);
+#else
         g_Dialogue.scriptCur = script;
+#endif
         g_Dialogue.primIndex[1] = -1;
         g_Dialogue.primIndex[0] = -1;
         CutsceneUnk1();

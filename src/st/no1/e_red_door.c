@@ -150,6 +150,9 @@ void EntityRedDoor(Entity* self) {
             break;
         }
         if ((PLAYER.step != 0x19 || g_PlayableCharacter == PLAYER_ALUCARD) &&
+#if defined(MOD_SATURN)
+            !MOD_SPRINTING() &&
+#endif
             PLAYER.step != 1) {
             break;
         }
@@ -392,3 +395,9 @@ void EntityRedDoor(Entity* self) {
         }
     }
 }
+
+#if defined(MOD_OUTER_WALL_GHOST)
+// the tower's layout copy with the cut Ghost. It lives here because this
+// file's rodata is linked after the stage's data section, which must not move.
+#include "mod_layout.h"
+#endif

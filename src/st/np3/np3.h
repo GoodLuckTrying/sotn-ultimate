@@ -3,6 +3,10 @@
 
 #define STAGE_IS_NP3
 
+#if defined(MOD_SATURN_CASTLE)
+#include "../../../mods/sotn-ultimate/src/castle/np3/np3_mod_shaft.h"
+#endif
+
 enum Palettes {
     PAL_NONE = 0,
     // puff params 0,1,3

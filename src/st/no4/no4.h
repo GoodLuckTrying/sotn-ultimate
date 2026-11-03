@@ -2,6 +2,9 @@
 #include "stage.h"
 
 #define STAGE_IS_NO4
+#if defined(MOD_SATURN_ITEMS)
+#include "../../../mods/sotn-ultimate/src/items/no4_mod_glaring_cloth.h"
+#endif
 
 enum Palettes {
     PAL_NONE = 0,

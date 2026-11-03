@@ -16,6 +16,19 @@ void EntityWeaponAttack(Entity* self) {
     WeaponAnimation* anim;
     s16 animIndex;
 
+#if defined(MOD_SATURN)
+    // Saturn port: the Saturn Basilard: its second swing's last frame uses
+    // hitbox 5 (retail 4); hitbox 15 reaches 22 forward (Saturn 27,
+    // retail 17)
+    // (Saturn balance; PS1 balance writes the retail value back)
+    {
+        extern u8 D_DD000_8017A7DC[];
+        extern s8 D_DD000_8017A848[];
+        s32 sat = !MOD_PS1_BALANCE();
+        D_DD000_8017A7DC[0x11] = sat ? 0x0A : 0x08;
+        D_DD000_8017A848[15 * 4] = sat ? 22 : 17;
+    }
+#endif
     self->posX.val = PLAYER.posX.val;
     self->posY.val = PLAYER.posY.val;
     self->facingLeft = PLAYER.facingLeft;

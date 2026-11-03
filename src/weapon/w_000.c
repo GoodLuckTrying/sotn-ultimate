@@ -196,6 +196,13 @@ static WeaponAnimation g_SoundEvents[] = {
     {(u16**)g_Anim0, (s8*)g_Hitboxes, 0, SFX_WEAPON_SWISH_C, 0x41, 4},
     {(u16**)g_Anim0, (s8*)g_Hitboxes, 0, SFX_ALUCARD_SWORD_SWISH, 0x41, 4},
     {(u16**)g_Anim0, (s8*)g_Hitboxes, 0, SFX_WEAPON_SWISH_C, 0x41, 4},
+#if defined(MOD_SATURN)
+    // Saturn port: the Saturn's subtypes 5 (Terminus Est) and 6 (Mourneblade),
+    // their slash in palette +2 / +1 (Saturn balance sets their unk14 to 5 / 6;
+    // past the retail table they drew nothing and hit nothing)
+    {(u16**)g_Anim0, (s8*)g_Hitboxes, 2, SFX_WEAPON_SWISH_C, 0x41, 4},
+    {(u16**)g_Anim0, (s8*)g_Hitboxes, 1, SFX_WEAPON_SWISH_B, 0x41, 4},
+#endif
 };
 
 static u16* g_WeaponCluts[] = {

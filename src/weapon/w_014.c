@@ -64,8 +64,14 @@ void EntityWeaponAttack(Entity* self) {
         self->ext.weapon.lifetime = 0x16;
         SetWeaponProperties(self, 0);
         DestroyEntityWeapon(true);
+#if defined(MOD_SATURN)
+        // Saturn port: the Saturn Runesword's projectile hits as 6 x 6
+        // (retail 4 x 4; Saturn balance)
+        self->hitboxHeight = self->hitboxWidth = MOD_PS1_BALANCE() ? 4 : 6;
+#else
         self->hitboxHeight = 4;
         self->hitboxWidth = 4;
+#endif
         self->rotate = ROT(-157.5);
         self->drawFlags |= ENTITY_ROTATE;
 
@@ -239,8 +245,12 @@ s32 func_ptr_80170004(Entity* self) {
         self->ext.weapon.equipId = self->ext.weapon.parent->ext.weapon.equipId;
         SetWeaponProperties(self, 0);
         self->enemyId = self->ext.weapon.parent->enemyId;
+#if defined(MOD_SATURN)
+        self->hitboxWidth = self->hitboxHeight = MOD_PS1_BALANCE() ? 4 : 6;
+#else
         self->hitboxWidth = 4;
         self->hitboxHeight = 4;
+#endif
         self->step++;
     }
 

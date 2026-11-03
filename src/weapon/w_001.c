@@ -31,6 +31,21 @@ void EntityWeaponAttack(Entity* self) {
     s16 size;
     s16 angle;
 
+#if defined(MOD_SATURN)
+    // Saturn port: the Saturn's punches reach further forward, as the
+    // bare hand's (src/dra/game_handlers.c MOD_BAL_BARE): hitboxes 4 / 6 /
+    // 8 / 10 / 11 at x 23 / 17 / 28 / 30 / 30 (retail 18 / 12 / 18 / 19 /
+    // 21; Saturn balance)
+    {
+        static const u8 hb[] = {4, 6, 8, 10, 11};
+        static const s8 x[2][5] = {{18, 12, 18, 19, 21}, {23, 17, 28, 30, 30}};
+        extern s8 D_B000_8017AEF8[];
+        s32 sat = !MOD_PS1_BALANCE();
+        for (i = 0; i < 5; i++) {
+            D_B000_8017AEF8[hb[i] * 4] = x[sat][i];
+        }
+    }
+#endif
     params = (self->params & 0x7FFF) >> 8;
     self->posX.val = PLAYER.posX.val;
     self->posY.val = PLAYER.posY.val;

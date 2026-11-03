@@ -17,6 +17,16 @@ static void EntityWeaponAttack(Entity* self) {
     WeaponAnimation* anim;
     s16 subType;
 
+#if defined(MOD_SATURN)
+    // Saturn port: the Saturn Holy Rod: hitbox 11 reaches 22 forward
+    // (Saturn 28, retail 15)
+    // (Saturn balance; PS1 balance writes the retail value back)
+    {
+        extern s8 D_20000_8017B264[];
+        s32 sat = !MOD_PS1_BALANCE();
+        D_20000_8017B264[11 * 4] = sat ? 22 : 15;
+    }
+#endif
     self->posX.val = PLAYER.posX.val;
     self->posY.val = PLAYER.posY.val;
     self->facingLeft = PLAYER.facingLeft;

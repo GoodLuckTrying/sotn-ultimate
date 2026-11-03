@@ -16,6 +16,16 @@ void EntityWeaponAttack(Entity* self) {
     WeaponAnimation* anim;
     s8 animIndex;
 
+#if defined(MOD_SATURN)
+    // Saturn port: the Saturn Nunchaku: hitbox 15 is 10 wide (Saturn 13,
+    // retail 18)
+    // (Saturn balance; PS1 balance writes the retail value back)
+    {
+        extern s8 D_EB000_8017ABBC[];
+        s32 sat = !MOD_PS1_BALANCE();
+        D_EB000_8017ABBC[15 * 4 + 2] = sat ? 10 : 18;
+    }
+#endif
     self->posX.val = PLAYER.posX.val;
     self->posY.val = PLAYER.posY.val;
     self->facingLeft = PLAYER.facingLeft;

@@ -299,7 +299,15 @@ void EntityWeaponAttack(Entity* self) {
                 dest++;
             }
 
+#if defined(MOD_SATURN)
+            // Saturn balance (Player Select, game.h MOD_FLAG_PS1_BALANCE):
+            // the Saturn's Bat Pentagram (its own weapon 59, else this code)
+            // lets the shards fly 160 frames; the Pentagram keeps 128
+            self->ext.weapon.lifetime =
+                (self->params & 0x7F00) && !MOD_PS1_BALANCE() ? 160 : 128;
+#else
             self->ext.weapon.lifetime = 128;
+#endif
             self->step++;
         }
         break;

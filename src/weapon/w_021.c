@@ -235,7 +235,22 @@ static void EntityWeaponAttack(Entity* self) {
         // Testing for meal ticket
         if (((self->params >> 8) & 0x7F) == 41) {
             self->params &= 0x80FF;
+#if defined(MOD_SATURN)
+            {
+                // Saturn port: as on the Saturn, the pool includes its two
+                // new foods. Their equip ids don't fit the pickup's 7-bit
+                // field, so they travel as MOD_MEAL_TICKET_NEW + n (the
+                // offset below turns into that equip id when added to the
+                // Meal ticket's), see func_ptr_80170004.
+                s32 food = rand() % 43;
+                if (food >= 41) {
+                    food += MOD_MEAL_TICKET_NEW - 41 - (ITEM_MEAL_TICKET - 41);
+                }
+                self->params |= food << 8;
+            }
+#else
             self->params |= (rand() % 41) << 8;
+#endif
             self->step = 5;
             self->animCurFrame = 0;
             // weird logic here
@@ -424,6 +439,9 @@ static void EntityWeaponAttack(Entity* self) {
 s32 func_ptr_80170004(Entity* self) {
     Collider sp10;
     u32 upperParams;
+#if defined(MOD_SATURN)
+    s32 newFoodFrame;
+#endif
     s16 xShift;
     s16 yShift;
     const char* temp_s1;
@@ -431,6 +449,14 @@ s32 func_ptr_80170004(Entity* self) {
     s16 yVar;
 
     upperParams = (self->params >> 8) & 0x7F;
+#if defined(MOD_SATURN)
+    // Saturn port: the Meal ticket's codes for the Saturn's new foods (food
+    // ids 42 and 43, see mods/sotn-ultimate/tools/port_saturn_food.py)
+    if (upperParams >= MOD_MEAL_TICKET_NEW) {
+        newFoodFrame = 43 + upperParams - MOD_MEAL_TICKET_NEW;
+        upperParams = ITEM_SMELLY_RICE + upperParams - MOD_MEAL_TICKET_NEW;
+    }
+#endif
 
     switch (self->step) {
     case 0:
@@ -446,7 +472,12 @@ s32 func_ptr_80170004(Entity* self) {
         self->zPriority = PLAYER.zPriority + 2;
         self->facingLeft = PLAYER.facingLeft;
         self->flags = FLAG_POS_CAMERA_LOCKED;
-        self->animCurFrame = upperParams - 0x1C;
+#if defined(MOD_SATURN)
+        if (upperParams >= NUM_HAND_ITEMS) {
+            self->animCurFrame = newFoodFrame;
+        } else
+#endif
+            self->animCurFrame = upperParams - 0x1C;
         self->posY.i.hi -= 4;
         SetSpeedX((rand() & 0x3FFF) + FIX(0.875));
         self->velocityY = FIX(-2);

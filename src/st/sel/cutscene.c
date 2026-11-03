@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "sel.h"
+#include "mod_psp_script.h" // the PSP dub toggle's script copies
 #include <cutscene.h>
 
 extern u32 D_801BC3E8;
@@ -34,7 +35,12 @@ u8 SetCutsceneScript(u8* script) {
 
     g_Dialogue.primIndex[2] = g_api.AllocPrimitives(PRIM_SPRT, 7);
     if (g_Dialogue.primIndex[2] != -1) {
+#if defined(MOD_PSP_SCRIPT)
+        // Saturn port: the PSP dub toggle's script copies (mod_psp_script.h)
+        g_Dialogue.scriptCur = ModPspScript(script);
+#else
         g_Dialogue.scriptCur = script;
+#endif
         g_Dialogue.hasEvents = 0;
         g_Dialogue.primIndex[1] = -1;
         g_Dialogue.primIndex[0] = -1;

@@ -80,8 +80,16 @@ StageName D_80180128[80] = {
     {_S(""), _S("")},
     {_S(""), _S("")},
     {_S(""), _S("")},
+#if defined(MOD_SATURN)
+    {_S("Cursed"), _S("Prison")}, // Saturn port: MOD_STAGE_PRS
+#else
     {_S(""), _S("")},
+#endif
+#if defined(MOD_SATURN)
+    {_S("Underground"), _S("Garden")}, // Saturn port: MOD_STAGE_GDN
+#else
     {_S(""), _S("")},
+#endif
     {_S(""), _S("")},
     {_S(""), _S("")},
     {_S(""), _S("")},
@@ -105,15 +113,27 @@ StageName D_80180128[80] = {
     {_S("Anti-Chapel"), _S("")},
     {_S("Reverse"), _S("Entrance")},
     {_S(""), _S("")},
+#if defined(MOD_SATURN)
+    // Saturn port: the retail "Reverce" typo, corrected
+    {_S("Reverse"), _S("Caverns")},
+    {_S("Reverse"), _S("Colosseum")},
+    {_S("Reverse"), _S("Keep")},
+#else
     {_S("Reverce"), _S("Caverns")},
     {_S("Reverce"), _S("Colosseum")},
     {_S("Reverce"), _S("Keep")},
+#endif
     {_S("Necromancy"), _S("Laboratory")},
     {_S(""), _S("")},
     {_S(""), _S("")},
     {_S(""), _S("")},
+#if defined(MOD_SATURN)
+    {_S("Soul"), _S("Prison")}, // Saturn port: MOD_STAGE_RPRS
+    {_S("Hell"), _S("Garden")}, // Saturn port: MOD_STAGE_RGDN
+#else
     {_S(""), _S("")},
     {_S(""), _S("")},
+#endif
     {_S(""), _S("")},
     {_S(""), _S("")},
     {_S(""), _S("")},
@@ -174,10 +194,21 @@ static void func_801AC084(s32 arg0, s32 ypos) {
     }
 }
 
+#if defined(MOD_ULTIMATE_MENU)
+#include "../../../mods/sotn-ultimate/src/menu/2C048_mod_sound_button.h"
+#else
+#define MOD_MENU_BTN_X(i) ((i) * 0x40 - 0x20)
+#define MOD_MENU_BTN_Y(i) ((i) * 0x28)
+#endif
+
 // Creates the buttons, displays, etc on main menu
 void InitMainMenuUI(void) {
     Primitive* prim;
     s32 i;
+
+#if defined(MOD_SATURN)
+    ModSoundBtnUpload();
+#endif
 
     // Decoration at the top left for "Select Your Destiny"
     D_801BAF18[GFX_UNK_0][0] = g_api.AllocPrimitives(PRIM_GT4, 1);
@@ -192,8 +223,8 @@ void InitMainMenuUI(void) {
     for (i = 0; i < NUM_MENU_OPTIONS; i++) {
         D_801BAF18[i + 1][0] = g_api.AllocPrimitives(PRIM_GT4, 1);
         prim = &g_PrimBuf[D_801BAF18[i + 1][0]];
-        SetTexturedPrimRect(prim, i * 0x40 - 0x20, i * 0x28, 0x7F, 0x1F,
-                            g_MenuHeadGfxU[i], g_MenuHeadGfxV[i]);
+        SetTexturedPrimRect(prim, MOD_MENU_BTN_X(i), MOD_MENU_BTN_Y(i), 0x7F,
+                            0x1F, g_MenuHeadGfxU[i], g_MenuHeadGfxV[i]);
         func_801B1D88(prim);
         prim->tpage = 0xC;
         prim->clut = 0x200;
@@ -549,7 +580,13 @@ void func_801ACFBC(s32 port, s32 slot, s32 textId) {
     }
     func_801B263C(playerName, textId);
     func_801B25D4("　", textId + 1);
-    if (g_SaveSummary[port].character[slot]) {
+#if defined(MOD_SATURN)
+    // mod: Maria saves (Saturn or PSP) are labelled "Maria", not "Richter"
+    if (g_SaveSummary[port].character[slot] == PLAYER_MARIA) {
+        func_801B2608("Maria", textId + 2);
+    } else
+#endif
+        if (g_SaveSummary[port].character[slot]) {
         func_801B2608("Richter", textId + 2);
     } else if (g_SaveSummary[port].kind[slot] & SAVE_FLAG_CLEAR) {
         func_801B2608("Clear", textId + 2);
@@ -642,6 +679,10 @@ void DrawNavigationTips(NavigationTips mode) {
     }
 }
 
+#if defined(MOD_ULTIMATE_MENU)
+#include "../../../mods/sotn-ultimate/src/menu/2C048_mod_sound_menu.h"
+#endif
+
 void func_801AD490(void) {
     Primitive* prim;
     s32 i;
@@ -652,6 +693,13 @@ void func_801AD490(void) {
     DrawString16x16("select", 0xF0, 0x20, 1);
     DrawString16x16("your", 0x100, 0x30, 1);
     DrawString16x16("destiny", 0xE8, 0x40, 1);
+#if defined(MOD_SATURN)
+    func_801B27A8(
+        MOD_MENU_BTN_X(MOD_MENU_SOUND), MOD_MENU_BTN_Y(MOD_MENU_SOUND),
+        MOD_SOUND_BTN_W, MOD_SOUND_BTN_H, 0, MOD_SOUND_BTN_V,
+        g_MainMenuCursor == MOD_MENU_SOUND ? 0x203 : 0x200, MOD_SOUND_BTN_TPAGE,
+        1, 0x80);
+#endif
 
     for (i = 0; i < NUM_MENU_OPTIONS; i++) {
         prim = &g_PrimBuf[D_801BAF18[i + 1][0]];
@@ -667,12 +715,21 @@ const char* D_80180454[] = {
     "−＊＊＊＊＊−",  "− New Game −",   "− Change Name −",
     "− Copy File −", "− Erase File −",
 };
+#if defined(MOD_SATURN)
+// (not in D_80180454: SEL's .data must not move, psp_script.py patches it)
+static const char* const g_ModMenuSoundHelp MOD_RO = "− Sound Mode −";
+#endif
 
+#if defined(MOD_SATURN)
+#define MOD_MENU_LAST MOD_MENU_SOUND
+#else
+#define MOD_MENU_LAST 4
+#endif
 void func_801AD590(void) {
     if (g_pads[0].tapped & (PAD_RIGHT | PAD_DOWN)) {
         g_api.PlaySfx(SFX_UI_MP_FULL); // MP sfx also used for Main Menu Select
         g_MainMenuCursor++;
-        if (g_MainMenuCursor == 5) {
+        if (g_MainMenuCursor == MOD_MENU_LAST + 1) {
             g_MainMenuCursor = 1;
         }
     }
@@ -680,9 +737,15 @@ void func_801AD590(void) {
         g_api.PlaySfx(SFX_UI_MP_FULL);
         g_MainMenuCursor--;
         if (g_MainMenuCursor == 0) {
-            g_MainMenuCursor = 4;
+            g_MainMenuCursor = MOD_MENU_LAST;
         }
     }
+#if defined(MOD_SATURN)
+    if (g_MainMenuCursor == MOD_MENU_SOUND) {
+        func_801B2608((char*)g_ModMenuSoundHelp, 9);
+        return;
+    }
+#endif
     func_801B2608(D_80180454[g_MainMenuCursor], 9);
 }
 
@@ -729,6 +792,10 @@ void func_801AD66C(void) {
         g_PlayableCharacter = PLAYER_ALUCARD;
     }
 }
+
+#if defined(MOD_ULTIMATE_MENU)
+#include "../../../mods/sotn-ultimate/src/menu/2C048_mod_player_select.h"
+#endif
 
 void func_801AD78C(void) {
     Primitive* prim;
@@ -1024,8 +1091,8 @@ void func_801AE9A8(void) {
     for (i = 1; i < NUM_MENU_OPTIONS; i++) {
         func_801ACBE4(i + 1, 4);
         prim = &g_PrimBuf[D_801BAF18[i + 1][0]];
-        SetTexturedPrimRect(prim, (i * 0x40) - 0x20, i * 0x28, 0x7F, 0x1F,
-                            g_MenuHeadGfxU[i], g_MenuHeadGfxV[i]);
+        SetTexturedPrimRect(prim, MOD_MENU_BTN_X(i), MOD_MENU_BTN_Y(i), 0x7F,
+                            0x1F, g_MenuHeadGfxU[i], g_MenuHeadGfxV[i]);
     }
 
     DrawNavigationTips(Tips_Generic);
@@ -1157,6 +1224,9 @@ void Update(void) {
     s32 temp_s1;
     s32 var_s4;
 
+#if defined(MOD_SATURN) && defined(VERSION_US)
+    ModJpDubCopy();
+#endif
     func_801B1F34();
     switch (g_GameEngineStep) {
     case Upd_Eng_Init:
@@ -1216,6 +1286,13 @@ void Update(void) {
                 g_api.PlaySfx(SFX_UI_CONFIRM);
                 g_GameEngineStep = Upd_Eng_FileDelete;
                 break;
+#if defined(MOD_SATURN)
+            case MOD_MENU_SOUND:
+                g_api.PlaySfx(SFX_UI_CONFIRM);
+                ModSoundInit();
+                g_GameEngineStep = Upd_Eng_ModSound;
+                break;
+#endif
             default:
                 g_api.PlaySfx(SFX_UI_ERROR);
                 break;
@@ -1250,6 +1327,32 @@ void Update(void) {
             if (g_pads[0].tapped & PAD_START) {
                 g_api.PlaySfx(SFX_UI_CONFIRM);
                 func_801AD66C();
+#if defined(MOD_SATURN)
+                g_ModCharselShown = false;
+                MOD_STATUS_FLAGS = 0;
+                // Saturn name code "STAFF" (TITLE.PRG, no clear needed):
+                // roll the staff credits through SEL's ending handler.
+                {
+                    const char* staff = "staff   ";
+                    for (i = 0; i < 8; i++) {
+                        if (g_Status.saveName[i] != staff[i]) {
+                            break;
+                        }
+                    }
+                    g_ModStaffRoll = i == 8;
+                }
+                if (g_ModStaffRoll) {
+                    D_800978B4 = MOD_ENDING_STAFF;
+                } else if (g_PlayableCharacter == PLAYER_ALUCARD) {
+                    if (ModCharselInit()) {
+                        g_GameEngineStep = Upd_Eng_ModCharSelect;
+                        break;
+                    }
+                } else {
+                    // the retail "RICHTER" name: normal costume
+                    g_Status.D_80097C40 = 0;
+                }
+#endif
                 if (g_PlayableCharacter == PLAYER_ALUCARD) {
                     g_StageId = STAGE_ST0;
                 } else {
@@ -1267,15 +1370,36 @@ void Update(void) {
             }
         }
         break;
+#if defined(MOD_SATURN)
+    case Upd_Eng_ModCharSelect:
+        ModCharselUpdate();
+        break;
+    case Upd_Eng_ModSound:
+        ModSoundUpdate();
+        break;
+#endif
     case Upd_Eng_18:
+#if defined(MOD_SATURN)
+        if (g_ModCharselShown) {
+            ModCharselDraw();
+        } else {
+            func_801AD78C();
+        }
+#else
         func_801AD78C();
+#endif
         if (func_801ACEC0()) {
             func_801B18F4();
             func_801B19F4();
             func_801B1DA8();
             func_801B2D1C();
             g_api.func_800EA538(0);
-            if (g_PlayableCharacter == PLAYER_ALUCARD) {
+#if defined(MOD_SATURN)
+            if (g_ModStaffRoll) {
+                SetGameState(Game_Ending);
+            } else
+#endif
+                if (g_PlayableCharacter == PLAYER_ALUCARD) {
                 SetGameState(Game_VideoPlayback);
             } else {
                 g_GameStep++;

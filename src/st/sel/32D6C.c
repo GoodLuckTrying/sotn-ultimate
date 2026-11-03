@@ -79,6 +79,23 @@ void HydrateSaveSummaryEntry(s32 port, s32 slot, s32 slotValue) {
     save = (SaveData*)g_Pix;
     g_SaveSummary[port].icon[slot] = save->info.cardIcon;
     g_SaveSummary[port].stage[slot] = save->info.stage;
+#if defined(MOD_SATURN)
+    // a "SAT4" save made in a mod-only area tells the US game the
+    // Entrance's save room (src/save_mgr.h StoreSaveData): the mod's file
+    // list names the real place, kept in ModSaveExtra.stage (byte 17 of the
+    // 20 before the magic; its bit 7 flags the familiar cards)
+    {
+        u8* st = (u8*)&save->status;
+        u8* mg = st + sizeof(PlayerStatus) - 4;
+
+        if (mg[0] == (MOD_SAVE_MAGIC & 0xFF) &&
+            mg[1] == ((MOD_SAVE_MAGIC >> 8) & 0xFF) &&
+            mg[2] == ((MOD_SAVE_MAGIC >> 16) & 0xFF) &&
+            mg[3] == (MOD_SAVE_MAGIC >> 24) && (mg[-20 + 17] & 0x7F)) {
+            g_SaveSummary[port].stage[slot] = mg[-20 + 17] & 0x7F;
+        }
+    }
+#endif
     g_SaveSummary[port].roomX[slot] = save->info.roomX;
     g_SaveSummary[port].roomY[slot] = save->info.roomY;
     g_SaveSummary[port].nRoomsExplored[slot] = save->info.nRoomsExplored;
@@ -393,11 +410,37 @@ s32 func_801B3A94(s32 arg0) {
                         save->info.endGameFlags |= 1;
                     } else {
                         strcpy(save->info.name, (const char*)arg0);
+#if !defined(MOD_SATURN)
                         strcpy(save->status.saveName, (const char*)arg0);
+#endif
                     }
                 }
+#if defined(MOD_SATURN)
+                {
+                    // Saturn port: an ending marks the game's last save
+                    // cleared by loading it back (arg0 1, func_801B17C8),
+                    // which would also take back the mod choices made since
+                    // (game.h MOD_STATUS_FLAGS; the System screen's Extra
+                    // settings, e.g. the Dub: the ending's voices). The card
+                    // keeps its own; the rest of the ending plays with the
+                    // game's. (Also after the file menu's rename / copy, where
+                    // nothing reads them: a game start sets them again)
+                    u8 flags = MOD_STATUS_FLAGS;
+                    ApplySaveData(g_Pix);
+                    // the file menu's rename: into the loaded status, not
+                    // the card's copy. Saves since "SAT4" are in the retail
+                    // layout, where saveName sits 0x14 earlier than in
+                    // SaveData: the name landed on hpMax and hearts
+                    if (arg0 != 0 && arg0 != 1) {
+                        strcpy(g_Status.saveName, (const char*)arg0);
+                    }
+                    StoreSaveData(g_Pix, D_801BB008, save->info.cardIcon);
+                    MOD_STATUS_FLAGS = flags;
+                }
+#else
                 ApplySaveData(g_Pix);
                 StoreSaveData(g_Pix, D_801BB008, save->info.cardIcon);
+#endif
                 g_MemCardRetryCount = 10;
                 g_MemCardRStep++;
             }

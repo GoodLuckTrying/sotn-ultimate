@@ -325,6 +325,22 @@ static void func_801B5548(void) {
 
     switch (self->step) {
     case 0:
+#if defined(MOD_SATURN)
+        // Saturn port: as the PSP, a Maria game (both versions) ends with
+        // her standing sprite from the good ending on the cliff
+        if (g_PlayableCharacter == PLAYER_MARIA) {
+            self->animSet = ANIMSET_OVL(3);
+            self->animCurFrame = 0xC;
+            self->unk5A = 0x46;
+            self->palette = 0x258;
+            self->facingLeft = 0;
+            self->ext.unkSelEnts.unk80.val = FIX(0x80);
+            self->posY.i.hi = 0xA0;
+            self->zPriority = 0xC0;
+            self->step++;
+            break;
+        }
+#endif
         self->animSet = ANIMSET_OVL(2);
         self->animCurFrame = 7;
         self->facingLeft = 0;
@@ -751,6 +767,15 @@ void func_801B60D4(void) {
     switch (g_GameEngineStep) {
     case 0:
         if (!g_IsUsingCd) {
+#if defined(MOD_SATURN)
+            // Saturn "STAFF" name code: no movie, no cutscene, credits only
+            // (case 4 on; the music starts there, after DRA's CD loads).
+            if (D_800978B4 == MOD_ENDING_STAFF) {
+                g_GameStep++;
+                g_GameEngineStep = 4;
+                break;
+            }
+#endif
             D_8003C728 = 1;
             if (D_800978B4 != 0) {
                 g_CurrentStream = 3;
@@ -822,6 +847,11 @@ void func_801B60D4(void) {
         break;
 
     case 4:
+#if defined(MOD_SATURN)
+        if (D_800978B4 == MOD_ENDING_STAFF) {
+            g_api.PlaySfx(MU_STAFF_CREDITS);
+        }
+#endif
         ClearImage(&D_8018258C, 0, 0, 0);
         g_GameEngineStep++;
         break;

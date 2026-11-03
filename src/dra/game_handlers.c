@@ -408,11 +408,20 @@ static u_long* D_psp_09156F28[] = {
 s16 AllocPrimitives(u8 type, s32 count);
 #endif
 
+#if defined(MOD_ULTIMATE_MENU)
+#include "../../mods/sotn-ultimate/src/menu/game_handlers_mod_balance.h"
+#endif
+
 void HandlePlay(void) {
     s32 i;
     u8* ptr;
     s16 *sx, *sy, *ex, *ey;
     Primitive* prim;
+
+#if defined(MOD_SATURN)
+    ModApplyBalance();
+    ModApplyDubText();
+#endif
 
     switch (g_GameStep) {
     case Play_Reset:
@@ -611,6 +620,22 @@ void HandlePlay(void) {
                 g_LoadFile = CdFile_StageChr;
                 g_LoadOvlIdx = STAGE_LIB;
             }
+#if defined(MOD_SATURN_STAGE_TEST)
+            // Saturn port test aid: the Library card's dialogue warps
+            // (src/dra/5087C.c ModDlgWarp; g_StageId is the destination) skip
+            // the loading rooms that normally preload a stage's tiles (DRE,
+            // CEN, RCEN and the retail card's 0x27 load theirs above)
+            if (D_80097C98 == 6 && D_8006C374 != 0x27 &&
+                g_StageId != STAGE_DRE && g_StageId != STAGE_CEN &&
+                g_StageId != STAGE_RCEN) {
+                if (g_IsUsingCd) {
+                    break;
+                }
+                g_CdStep = CdStep_LoadInit;
+                g_LoadFile = CdFile_StageChr;
+                g_LoadOvlIdx = g_StageId;
+            }
+#endif
         }
 #ifndef VERSION_PSP
         MoveImage(&g_Vram.D_800ACD80, 0, 0x100);
@@ -1267,6 +1292,8 @@ void InitializeServant(InitializeMode mode) {
     }
 }
 
+#if !defined(MOD_DRA_STRIP) // PC familiar loader: only the g_UseDisk == 0
+                            // branches called it
 void func_800E6250(void) {
     if (g_Servant != 0) {
         while (LOADFILESIM_PSPALT(g_Servant - 1, SimFileType_FamiliarPrg))
@@ -1279,6 +1306,7 @@ void func_800E6250(void) {
             ;
     }
 }
+#endif
 
 s32 func_800E6300(void) {
     s32 i;
@@ -1390,6 +1418,9 @@ void HandleNowLoading(void) {
             } else {
                 strcpy(g_Status.saveName, "alucard ");
                 g_DemoMode = Demo_None;
+#if !defined(MOD_DRA_STRIP)
+                // US MainGame sets g_DebugPlayer = 0 and nothing sets it
+                // again (only HD / PSP do): the debug start is dead
                 if (g_DebugPlayer != 0) {
 #ifdef VERSION_PSP
                     strcpy(
@@ -1426,6 +1457,7 @@ void HandleNowLoading(void) {
                     }
 #endif
                 }
+#endif
                 g_GameStep++;
             }
         }
@@ -1658,7 +1690,7 @@ void HandleNowLoading(void) {
                     weaponId = 1;
                 }
                 if (g_Status.equipment[ARMOR_SLOT] == ITEM_AXE_LORD_ARMOR) {
-                    weaponId = g_EquipDefs[0xD8].weaponId;
+                    weaponId = g_EquipDefs[MOD_SPECIAL(0xD8)].weaponId;
 #ifdef VERSION_PSP
                     weaponId1 = weaponId;
                     weaponId2 = weaponId;
@@ -1703,7 +1735,7 @@ void HandleNowLoading(void) {
                 weaponId = 1;
             }
             if (g_Status.equipment[ARMOR_SLOT] == ITEM_AXE_LORD_ARMOR) {
-                weaponId = g_EquipDefs[0xD8].weaponId;
+                weaponId = g_EquipDefs[MOD_SPECIAL(0xD8)].weaponId;
             }
             if (LOADFILESIM_PSPALT(weaponId, SimFileType_Weapon0Prg) < 0) {
                 break;
@@ -1717,7 +1749,7 @@ void HandleNowLoading(void) {
                 weaponId = 1;
             }
             if (g_Status.equipment[ARMOR_SLOT] == ITEM_AXE_LORD_ARMOR) {
-                weaponId = g_EquipDefs[0xD8].weaponId;
+                weaponId = g_EquipDefs[MOD_SPECIAL(0xD8)].weaponId;
             }
             if (LOADFILESIM_PSPALT(weaponId, SimFileType_Weapon1Prg) < 0) {
                 break;
@@ -1738,7 +1770,7 @@ void HandleNowLoading(void) {
                 weaponId = 1;
             }
             if (g_Status.equipment[ARMOR_SLOT] == ITEM_AXE_LORD_ARMOR) {
-                weaponId = g_EquipDefs[0xD8].weaponId;
+                weaponId = g_EquipDefs[MOD_SPECIAL(0xD8)].weaponId;
             }
             g_EquippedWeaponIds[1] = weaponId;
         }
@@ -1811,10 +1843,16 @@ void HandleNowLoading(void) {
                         .unk28;
             }
         }
+#if !defined(MOD_SATURN)
         if (g_StageId == STAGE_NO3 && g_PlayableCharacter != PLAYER_ALUCARD) {
             D_8006C374 = 0x11;
             g_CastleFlags[PROLOGUE_COMPLETE] = 1;
         }
+#endif
+        // Saturn port: as on the Saturn, Richter's and Maria's new games
+        // start where Alucard's does, on the road to the castle, where they
+        // ride in on a horse (src/st/no3/e_outdoor_ents.c); the castle door
+        // then sets PROLOGUE_COMPLETE as it shuts behind them, as for Alucard
         D_800978C4 = 1;
         SetGameState(Game_Play);
         break;
@@ -2096,6 +2134,21 @@ void HandleEnding(void) {
         ClearBackbuffer();
         SetStageDisplayBuffer();
         g_StageId = STAGE_SEL;
+#if defined(MOD_SATURN)
+        // Saturn port: the scene that ends in the ending can leave a voice
+        // line playing (the JP dub's Shaft line 0x3EF runs 1100 frames, the
+        // PS1 one 694: it outlasts BO6's fade). Its end (func_80133FCC ->
+        // CdFadeOut2's CdlPause) then lands in one of the loads below and
+        // stops the read for good (CdStep_5 waits for sectors). As the
+        // stage changes do (SET_UNK_80, wait for func_80131F68), fade the
+        // XA out first; issued once (D_8013B61C, then the queued fade)
+        if (func_80131F68() || g_CdSoundCommandQueuePos) {
+            if (g_PlayingXaBgmId && !D_8013B61C && !g_CdSoundCommandQueuePos) {
+                PlaySfx(SET_UNK_80);
+            }
+            break;
+        }
+#endif
         if (g_UseDisk) {
             if (g_IsUsingCd) {
                 break;
@@ -2207,7 +2260,17 @@ void HandleEnding(void) {
     }
 }
 
+#if defined(MOD_SATURN)
+// declared here: without it the line below was a compile error that the
+// build's cc1 | as pipe hid (the statement was dropped, the pointer stayed
+// NULL and SEL's ending save jumped to 0)
+void StoreSaveData(SaveData* save, s32 block, s32 cardIcon);
+#endif
+
 void UpdateGame(void) {
+#if defined(MOD_SATURN)
+    g_ModDub.storeSave = StoreSaveData; // for SEL (save_mgr.h)
+#endif
     switch (g_GameState) {
     case Game_Init:
         HandleTitle();

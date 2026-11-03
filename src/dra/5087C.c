@@ -20,6 +20,12 @@ extern s32 D_psp_091CE570;
 #else
 #define CAN_PAUSE g_PauseAllowed
 #endif
+#if defined(MOD_SATURN)
+void ModPauseCd(s32 resume);
+#endif
+#if defined(MOD_SATURN_MARIA)
+extern s16* D_800D0F68[]; // ANIMSET_DRA(3), the item drops' frames
+#endif
 
 // BSS
 static bool D_80137598;
@@ -173,7 +179,46 @@ RoomTeleport D_800A245C[] = {
     {240, 132, 0x0000, 0x000D, STAGE_NZ1},
     {1264, 392, 0x0000, 0x0002, STAGE_LIB},
     {16, 132, 0x0000, 0x002D, STAGE_NZ1},
+#if defined(MOD_SATURN)
+    // Saturn port: the Underground Garden's links (Saturn teleports
+    // 0x45..0x48, with x scaled from its 320-px screens and room offsets from
+    // its 6-byte room records). The Garden->Castle Entrance and warp room
+    // exits land in the shaft's bottom screen until the shaft is extended
+    // and the warp room added (TODO).
+    /* MOD_TP_NP3_TO_GDN */ {16, 132, 0x0000, STAGE_NP3, MOD_STAGE_GDN},
+    // into the extended shaft's bottom screen, by its exit to the Garden
+    /* MOD_TP_GDN_TO_NP3 */ {240, 900, 0x0008, MOD_STAGE_GDN, STAGE_NP3},
+    // (the warp room's 6th room is not done yet: the shaft for now)
+    // into the sixth warp room (2,45), WRP room 15
+    // (mods/sotn-ultimate/tools/gen_mod_rooms.py)
+    /* MOD_TP_GDN_TO_WRP */ {240, 132, 15 * 8, MOD_STAGE_GDN, STAGE_WRP},
+    /* MOD_TP_WRP_TO_GDN */ {16, 388, 0x0000, STAGE_WRP, MOD_STAGE_GDN},
+    // the Cursed Prison's links (Saturn teleports 0x4B, 0x49, 0x4C, 0x4A):
+    // Underground Caverns room 5 (37,33)-(37,34) <-> the tower's top right,
+    // Marble Gallery room 0 (21,34)-(26,36) <-> the corridor's left end
+    /* MOD_TP_NO4_TO_PRS */ {752, 132, 0 * 8, STAGE_NO4, MOD_STAGE_PRS},
+    /* MOD_TP_PRS_TO_NO4 */ {16, 388, 5 * 8, MOD_STAGE_PRS, STAGE_NO4},
+    /* MOD_TP_NO0_TO_PRS */ {16, 132, 1 * 8, STAGE_NO0, MOD_STAGE_PRS},
+    /* MOD_TP_PRS_TO_NO0 */ {1520, 644, 0 * 8, MOD_STAGE_PRS, STAGE_NO0},
+#if defined(MOD_SATURN_STAGE_TEST)
+    // Test aid: the dialogue warp chain's own arrivals (ModDlgWarp below),
+    // at door positions (checked against the rooms' collision)
+    /* MOD_TP_DLG_FERRY1 */ {16, 132, 25 * 8, STAGE_NO4, STAGE_NO4},
+    /* MOD_TP_DLG_FERRY2 */ {16, 132, 23 * 8, STAGE_NO4, STAGE_NO4},
+    /* MOD_TP_DLG_DAI */ {496, 132, 0 * 8, STAGE_DAI, STAGE_DAI},
+    // Maria's NZ0 scene expects Alucard from the right (room 2): arriving
+    // by the DAI teleport 0x23 (x 16) puts him in the left red door, which
+    // then walks him out (step 4) while the scene holds him, and Maria's
+    // door kick lands on step 4 -> the door closes back to step 1 and the
+    // scene waits forever for it to open
+    /* MOD_TP_DLG_NZ0 */ {240, 132, 1 * 8, STAGE_NZ0, STAGE_NZ0},
+#endif
+#endif
 };
+#if defined(MOD_SATURN)
+// the MOD_TP_* indices in include/game.h must match the table
+typedef char ModTeleportCountCheck[LEN(D_800A245C) == MOD_TP_END ? 1 : -1];
+#endif
 
 RoomBossTeleport g_RoomBossTeleports[] = {
     {0x20, 0x1A, STAGE_NO0, TIMEATTACK_EVENT_FIRST_MARIA_MEET, 0x64},
@@ -521,6 +566,7 @@ block_25:
 }
 
 // Stripped on PSP; only called in HD.
+#if !defined(MOD_DRA_STRIP) // only HD calls it
 void func_800F1424(void) {
     if (g_pads[1].tapped & PAD_R1) {
         g_Tilemap.flags ^= 2;
@@ -532,6 +578,7 @@ void func_800F1424(void) {
         g_BgLayers[0].flags ^= 1;
     }
 }
+#endif
 
 // original name: PSX_POSITION_GET
 void func_800F14CC(void) {
@@ -594,6 +641,134 @@ void func_800F14CC(void) {
     }
 }
 
+#if defined(MOD_SATURN_STAGE_TEST)
+// Test aid (include/game.h): the Library card walks the game's dialogue
+// scenes in story order, to hear the dubs point to point. Each stop lands
+// just before its scene with the story state the scene needs (its "seen"
+// flag cleared). The good route first (Richter freed with the Holy Glasses,
+// inverted castle, Dracula), then optionally the Richter-killed ending.
+// test_checklist.md "Dialogue warp chain" lists what to do at each stop.
+void AddToInventory(u16 id, EquipKind kind);
+typedef struct {
+    u8 stageId;
+    u8 teleport; // D_800A245C index (the arrival, as in retail)
+} ModDlgStop;
+static const ModDlgStop g_ModDlgStops[] = {
+    {STAGE_MAR, 0x64},              // 1 Marble Gallery clock room: Maria
+    {STAGE_NZ0, MOD_TP_DLG_NZ0},    // 2 Alchemy Lab: Maria again
+    {STAGE_LIB, 0x27},              // 3 Long Library: Master Librarian
+    {STAGE_NO4, MOD_TP_DLG_FERRY1}, // 4 Caverns: ferryman, 1st
+    {STAGE_NO4, MOD_TP_DLG_FERRY2}, // 5 Caverns: ferryman, 2nd
+    {STAGE_BO5, 0x68},              // 6 Royal Chapel: Hippogryph, Maria
+    {STAGE_BO2, 0x72},              // 7 Colosseum: Richter, M+W
+    {STAGE_DAI, MOD_TP_DLG_DAI},    // 8 Royal Chapel: Maria on Richter
+    {STAGE_DRE, 0x33},              // 9 Nightmare: Lisa / Succubus
+    {STAGE_CEN, 0x05},              // 10 Castle Center: Maria, glasses
+    {STAGE_BO6, 0x65},              // 11 Castle Keep: Richter, orb, Shaft
+    {STAGE_RBO2, 0x5B},             // 12 Cave (inverted): Death
+    {STAGE_RCEN, 0x05},             // 13 Reverse Center: Shaft
+    {STAGE_RBO6, 0x08},             // 14 Dracula + good ending
+    {STAGE_BO6, 0x65},              // 15 Castle Keep, no glasses: bad end
+};
+// the last stop warped to, 0xFF = none yet (initialised: DRA's BSS layout
+// must not change)
+static u8 g_ModDlgStop = 0xFF;
+
+static void ModDlgHead(u32 item) {
+    u32* eq = g_Status.equipment;
+    u32 old = eq[HEAD_SLOT];
+
+    if (old == item) {
+        return;
+    }
+    if (item != ITEM_EMPTY_HEAD) {
+        if (!g_Status.equipBodyCount[item]) {
+            return;
+        }
+        g_Status.equipBodyCount[item]--;
+    }
+    eq[HEAD_SLOT] = item;
+    if (old != ITEM_EMPTY_HEAD) {
+        AddToInventory(old, EQUIP_HEAD);
+    }
+    make_all();
+}
+
+// picks the next stop (L2 held: the same one, R2 held: the previous one),
+// sets its story state and returns its arrival teleport; g_StageId becomes
+// the destination
+static s32 ModDlgWarp(void) {
+    const s32 n = LEN(g_ModDlgStops);
+    s32 stop = g_ModDlgStop;
+    u8* cf = g_CastleFlags;
+
+    if (stop < n && (g_pads[0].pressed & PAD_L2)) {
+    } else if (stop < n && (g_pads[0].pressed & PAD_R2)) {
+        stop = stop ? stop - 1 : n - 1;
+    } else {
+        stop = stop + 1 >= n ? 0 : stop + 1;
+    }
+    g_ModDlgStop = stop;
+
+    switch (stop) {
+    case 1:
+        cf[MET_MARIA_IN_NZ0] = 0;
+        break;
+    case 2:
+        cf[MET_LIBRARIAN] = 0;
+        break;
+    case 3:
+        cf[MET_FERRYMAN_1] = 0;
+        break;
+    case 4:
+        // the east lake's ferryman only comes with the Merman Statue
+        g_Status.relics[RELIC_MERMAN_STATUE] |=
+            RELIC_FLAG_FOUND | RELIC_FLAG_ACTIVE;
+        cf[MET_FERRYMAN_2] = 0;
+        break;
+    case 5:
+        cf[MET_MARIA_AFTER_HIPPOGRYPH] = 0;
+        break;
+    case 6:
+        cf[RICHTER_CS_AFTER_M_AND_W] = 0;
+        break;
+    case 7:
+        cf[MET_MARIA_IN_DAI] = 0;
+        break;
+    case 8:
+        cf[SUCCUBUS_CS] = 0;
+        break;
+    case 9:
+        cf[CEN_OPEN] = 1;
+        cf[MET_MARIA_IN_CEN] = 0;
+        cf[INVERTED_CASTLE_UNLOCKED] = 0;
+        break;
+    case 10:
+    case 14:
+        // stop 11 with the Holy Glasses on (orb -> Shaft -> Richter freed
+        // -> Maria + Richter in the keep), stop 15 without (Richter dies)
+        cf[SHAFT_ORB_DEFEATED] = 0;
+        cf[INVERTED_CASTLE_UNLOCKED] = 0;
+        ModDlgHead(stop == 10 ? ITEM_HOLY_GLASSES : ITEM_EMPTY_HEAD);
+        break;
+    case 11:
+        cf[INVERTED_CASTLE_UNLOCKED] = 1;
+        cf[DEATH_FIGHT_CS] = 0;
+        break;
+    case 12:
+        cf[INVERTED_CASTLE_UNLOCKED] = 1;
+        cf[SHAFT_FIGHT_CS_UNK1] = 0;
+        cf[SHAFT_FIGHT_CS_UNK2] = 0;
+        break;
+    case 13:
+        cf[INVERTED_CASTLE_UNLOCKED] = 1;
+        break;
+    }
+    g_StageId = g_ModDlgStops[stop].stageId;
+    return g_ModDlgStops[stop].teleport;
+}
+#endif
+
 s32 func_800F16D0(void) {
     s32 stageId;
     RoomTeleport* tele;
@@ -605,7 +780,13 @@ s32 func_800F16D0(void) {
     else if (D_80097C98 == 5)
         return STAGE_TOP;
     else if (D_80097C98 == 6)
+#if defined(MOD_SATURN_STAGE_TEST)
+        // Saturn port test aid, see the Library card: it already set
+        // g_StageId to its destination
+        return g_StageId;
+#else
         return STAGE_LIB;
+#endif
     else {
         tele = &D_800A245C[D_8006C374];
         stageId = tele->stageId;
@@ -711,6 +892,21 @@ void repaintMapTilesOnCastleBlueprint(s32 invertedCastleIndicator) {
     // This function is called whenever a player loads a new stage, but will
     // only result in a noticeable change to the castle blueprint when the
     // player changes castles.
+#if defined(MOD_SATURN)
+    {
+        // Saturn port: the Entrance's old save room (3,42) keeps its door
+        // to the shaft (its left edge, the shaft's right wall) only on the
+        // first visit (NO3); the revisit and the inverted castle moved the
+        // save room to (3,43) / (60,20) and wall the shaft there
+        // (mods/sotn-ultimate/tools/gen_mod_rooms.py), so the door pixel is
+        // wall
+        u8 buffer[4 * 5];
+
+        copyMapTileColorsToBuffer(3, 42, buffer);
+        writeColorToBuffer(buffer, 0, 2, g_StageId == STAGE_NO3 ? 2 : 0);
+        copyBufferToMapTile(3, 42, buffer);
+    }
+#endif
     if (invertedCastleIndicator == 0) {
         // Underground Caverns, Left Ferryman Route
         resetMapTileOnCastleBlueprint(14, 43);
@@ -1224,6 +1420,31 @@ void func_800F2860(void) {
     }
 }
 
+#if defined(MOD_SATURN)
+#include "mod_xa_music.h"
+// Saturn port: the stage's music, with the Saturn's character Entrance
+// themes (game.c func_060727DC: the Entrance plays 0x12A for Richter and
+// 0x12C for Maria). The PS1-costume Richter and the PSP Maria play
+// Alucard's Entrance music, as their own versions did.
+// Also the Entrance's map: the old save room's door is open on it in NO3
+// only (repaintMapTilesOnCastleBlueprint), and the map image is drawn when a
+// game starts (in the prologue, or in NO3 for Richter / Maria) and when the
+// castle flips: drawn again whenever the Entrance loads (NO3 -> NP3 too)
+u32 ModStageMusic(void) {
+    if (g_StageId == STAGE_NO3 || g_StageId == STAGE_NP3) {
+        func_800F2120();
+        if (MOD_RIC_COSTUME2()) {
+            return MU_MOD_RICHTER_ENTRANCE;
+        }
+        // the PSP Maria plays Alucard's Entrance music (as on the PSP)
+        if (g_PlayableCharacter == PLAYER_MARIA && !MOD_MARIA_PSP()) {
+            return MU_MOD_SOUL_PRISON;
+        }
+    }
+    return g_StagesLba[g_StageId].musicId;
+}
+#endif
+
 void RunMainEngine(void) {
     Entity* ent;
     Primitive* prim;
@@ -1260,6 +1481,12 @@ void RunMainEngine(void) {
         func_800EAD7C();
         DrawHud();
         func_800F2404(0);
+#if defined(MOD_SATURN_MARIA)
+        // Saturn port: the item drops' own frames, which the PSP Maria's
+        // init swaps for a copy with her subweapon icons
+        // (mods/sotn-ultimate/src/maria_psp/mar2.c)
+        D_800A3B70[3] = D_800D0F68;
+#endif
         if (g_StageId == STAGE_ST0 || g_PlayableCharacter != PLAYER_ALUCARD) {
             playerInit = (void*)g_PlOvl.D_8013C004;
             if (g_StageId == STAGE_ST0) {
@@ -1283,7 +1510,11 @@ void RunMainEngine(void) {
         if (D_8003C708.flags & FLAG_UNK_40) {
             LoadGfxAsync(ANIMSET_DRA(4));
         }
+#if defined(MOD_SATURN)
+        currentMusicId = ModStageMusic();
+#else
         currentMusicId = g_StagesLba[g_StageId].musicId;
+#endif
         if (g_StageId == STAGE_NO3 && D_8003C730 == 0) {
             currentMusicId = SE_INTRO_WIND;
         }
@@ -1473,6 +1704,23 @@ void RunMainEngine(void) {
             g_GameStep = Play_PrepareNextStage;
             return;
         } else if (D_80097C98 == 6) {
+#if defined(MOD_SATURN_STAGE_TEST)
+            // Saturn port test aid: the Library card (warp code 6, see
+            // src/dra/7E4BC.c) walks the dialogue scenes instead
+            // (ModDlgWarp). As the retail card (which sets 0x22 first)
+            // g_StageId becomes the destination here; func_800F16D0 returns
+            // it for warp code 6 in test builds. The warp code stays 6 (the
+            // arrival fades in from the card's white flash; game_handlers.c
+            // loads the destination's tiles, as the loading rooms would).
+            // The arrival teleport is mirrored by func_800F14CC in the
+            // inverted castle, as in retail.
+            D_8006C374 = ModDlgWarp();
+            // the map image of the destination's castle (func_800F223C,
+            // which the retail card uses, flips the castle bit)
+            func_800F2120();
+            g_GameStep = Play_PrepareNextStage;
+            return;
+#endif
             g_StageId = 0x22;
             func_800F223C();
             D_8006C374 = 0x27;
@@ -1643,7 +1891,10 @@ void RunMainEngine(void) {
                 PlaySfx(SET_RELEASE_RATE_LOW_22_23);
                 PlaySfx(SET_RELEASE_RATE_LOW_20_21);
                 PlaySfx(SET_PAUSE_SFX_SCRIPTS);
-#if defined(VERSION_US)
+#if defined(MOD_SATURN)
+                // Saturn port: the music pauses (src/dra/sound.c)
+                ModPauseCd(0);
+#elif defined(VERSION_US)
                 if (g_StageId == STAGE_ST0) {
                     MuteCd();
                 }
@@ -1679,7 +1930,9 @@ void RunMainEngine(void) {
             PlaySfx(SET_UNPAUSE_SFX_SCRIPTS);
             PlaySfx(SET_KEY_ON_20_21);
             PlaySfx(SET_KEY_ON_22_23);
-#if defined(VERSION_US)
+#if defined(MOD_SATURN)
+            ModPauseCd(1); // Saturn port: the music goes on from there
+#elif defined(VERSION_US)
             if (g_StageId == STAGE_ST0) {
                 UnMuteCd();
             }
@@ -1731,7 +1984,11 @@ void RunMainEngine(void) {
                 }
                 break;
             } else if (stopMusicFlag != 0) {
+#if defined(MOD_SATURN)
+                currentMusicId = ModStageMusic();
+#else
                 currentMusicId = g_StagesLba[g_StageId].musicId;
+#endif
                 if (g_unkGraphicsStruct.D_800973FC != 1) {
                     PlaySfx(SET_STOP_MUSIC);
                     if (func_80131F68()) {
@@ -1909,7 +2166,14 @@ void RunMainEngine(void) {
         break;
     case 0x5:
         if (g_unkGraphicsStruct.unk28 != 0) {
+#if defined(MOD_SATURN_MARIA)
+            // Saturn port: the Saturn Maria's Byakko / Seiryuu halt the game
+            // with 4 (only Richter's prologue uses it too): her code runs on,
+            // as at the prologue, so her cast ends the halt
+            if (g_StageId != STAGE_ST0 && g_unkGraphicsStruct.unk28 != 4) {
+#else
             if (g_StageId != STAGE_ST0) {
+#endif
                 if (g_PlayableCharacter == PLAYER_ALUCARD) {
                     if (g_unkGraphicsStruct.unk28 == 0xFFF) {
                         EntityAlucard();

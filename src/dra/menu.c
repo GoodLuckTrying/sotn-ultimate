@@ -49,6 +49,14 @@ static s32 g_ServantPrevious;
 
 extern s32 g_PrevEquippedWeapons[2];
 
+#if defined(MOD_ULTIMATE_MENU)
+#include "../../mods/sotn-ultimate/src/menu/menu_mod_sysopt.h"
+#else
+#define MOD_SYSOPT_BOX func_800F5E68
+#define MOD_SYSOPT_INPUT MenuHandleCursorInput
+#define MOD_SYSOPT_SOUND MenuSoundConfigDraw
+#endif
+
 const char* D_800A2D48[] = {
 #if defined(VERSION_US)
     "？？？？？",
@@ -58,6 +66,16 @@ const char* D_800A2D48[] = {
     "Window color settings",
     "Sound settings",
     "Time from game start",
+#if defined(MOD_SATURN)
+    // Saturn port: the System screen's "Ultimate settings" row 6 (Alucard
+    // games only; mods/sotn-ultimate/src/menu/sysopt.c): its text is in
+    // that code's header. The three unused entries keep g_MenuStr (SEL's
+    // MOD_MENU_STR) where it was
+    (const char*)MOD_SYSOPT_BAR_TEXT,
+    (const char*)MOD_SYSOPT_BAR_TEXT,
+    (const char*)MOD_SYSOPT_BAR_TEXT,
+    (const char*)MOD_SYSOPT_BAR_TEXT,
+#endif
 #elif defined(VERSION_HD)
     "？？？？？",
     "ボタン割当変更",
@@ -129,6 +147,17 @@ static const char* D_800A2D68[] = {
 };
 #endif
 
+#if defined(MOD_SATURN_ITEMS)
+#include "../../mods/sotn-ultimate/src/items/menu_mod_equip_rows.h"
+#else
+#define ModEquipRow(slot) (slot)
+#define ModEquipSlot(row) (row)
+#define MOD_EQUIP_ROWS() 7
+#define MOD_EQUIP_PITCH() 13
+#define MOD_BUTTON_ROWS() 7
+#define MOD_HAND_PAIR() 1
+#endif
+
 bool CheckIfAllButtonsAreAssigned(void) {
     s32 buf[BUTTON_COUNT];
     s32 i;
@@ -139,11 +168,11 @@ bool CheckIfAllButtonsAreAssigned(void) {
         buf[i] = 0;
     }
 
-    for (i = 0; i < 7; i++) {
+    for (i = 0; i < MOD_BUTTON_ROWS(); i++) {
         buf[g_Settings.buttonConfig[i]] = 1;
     }
 
-    for (i = 0; i < BUTTON_COUNT; i++) {
+    for (i = 0; i < BUTTON_COUNT && MOD_BUTTON_ROWS() == 7; i++) {
         if (buf[i] == 0) {
 #if !defined(VERSION_PSP)
             g_Settings.buttonConfig[7] = i;
@@ -306,6 +335,20 @@ s32 CalcAttack(u32 equipId, u32 otherEquipId) {
         g_EquipDefs[otherEquipId].itemCategory == ITEM_SHIELD) {
         totalAttack += 5;
     }
+#if defined(MOD_SATURN)
+    // Saturn CalcAttack (src/saturn/game_3a.c, table 0x060850EC): the Jewel
+    // Sword gains attack from the jewels worn as accessories, Zircon to
+    // Diamond, both slots adding up (Saturn balance)
+    if (equipId == ITEM_JEWEL_SWORD && !MOD_PS1_BALANCE()) {
+        static const u8 jewelBonus[] = {1, 3, 6, 10, 16, 23, 32};
+        for (i = ACCESSORY_1_SLOT; i <= ACCESSORY_2_SLOT; i++) {
+            u32 k = g_Status.equipment[i] - ITEM_ZIRCON;
+            if (k < LEN(jewelBonus)) {
+                totalAttack += jewelBonus[k];
+            }
+        }
+    }
+#endif
     if (equipId == ITEM_SWORD_FAMILIAR) {
         totalAttack += g_Status.statsFamiliars[FAM_STATS_SWORD].level;
     }
@@ -721,7 +764,15 @@ void DrawRelicsMenu(MenuContext* ctx) {
 
     ctx_h = ctx->h;
     relic = g_Status.relics;
-#if defined(VERSION_US)
+#if defined(MOD_GODSPEED)
+    // Saturn port: every relic, the JP familiars' cards included, then God
+    // Speed Shoes (relic 30, whose flags live outside g_Status.relics)
+    for (i = 0, var_s3 = 0; i < NUM_AVAIL_RELICS; i++, var_s3++, relic++) {
+        if (i == RELIC_GODSPEED_SHOES) {
+            relic = &MOD_RELIC_FLAGS(RELIC_GODSPEED_SHOES);
+        }
+#define INDEXER var_s3
+#elif defined(VERSION_US)
     for (i = 0, var_s3 = 0; i < 30; i++, var_s3++, relic++) {
         // This if-statement only exists in US. This is to skip over
         // rendering the JP-exclusive familiars (sprite and nosedevil)
@@ -865,8 +916,10 @@ void func_800F6618(s32 menuDialogue, s32 bColorMode) {
             r = 0x5F - (g_Timer & 0x1F);
         }
     }
-    MenuDrawRect(context, 0x70, g_MenuNavigation.cursorEquip * 13 + 0x1C, 0x71,
-                 0xB, r, 0, 0);
+    MenuDrawRect(
+        context, 0x70,
+        ModEquipRow(g_MenuNavigation.cursorEquip) * MOD_EQUIP_PITCH() + 0x1C,
+        0x71, 0xB, r, 0, 0);
 }
 
 void func_800F66BC(
@@ -1121,8 +1174,13 @@ void MenuButtonConfigDraw(MenuContext* ctx) {
 #define XVAR cursorX
 #endif
 
-    for (i = 0, x = startX; i < 7; i++) {
+    for (i = 0, x = startX; i < MOD_BUTTON_ROWS(); i++) {
+#if defined(MOD_SATURN)
+        MenuDrawStr(i == 7 ? MOD_HOLDER_STR : g_MenuStr[i + 22], cursorX,
+                    0x30 + i * 16, ctx);
+#else
         MenuDrawStr(g_MenuStr[i + 22], cursorX, 0x30 + i * 16, ctx);
+#endif
         buttonId = g_Settings.buttonConfig[i];
         MenuDrawChar(g_ChButtons[buttonId], XVAR + 0x30 + (buttonId * 12),
                      0x30 + i * 16, ctx);
@@ -1384,7 +1442,12 @@ void MenuDrawStats(s32 menuDialogue) {
         x = 32;
         y = 120;
     } else {
-#if defined(VERSION_US)
+#if defined(VERSION_US) && defined(MOD_SATURN)
+        MenuDrawStr(g_MenuNavigation.cursorEquip == MOD_HOLDER_SLOT
+                        ? MOD_HOLDER_STR
+                        : g_MenuStr[g_MenuNavigation.cursorEquip + 85],
+                    8, 40, ctx);
+#elif defined(VERSION_US)
         MenuDrawStr(g_MenuStr[g_MenuNavigation.cursorEquip + 85], 8, 40, ctx);
 #elif defined(VERSION_PSP)
         func_800F66BC(
@@ -1525,6 +1588,9 @@ void MenuFamiliarsDraw(MenuContext* ctx) {
     s32 i;
     s32 x, y;
     s32 strId;
+#if defined(MOD_SATURN)
+    FamiliarStats stats;
+#endif
 
 #if defined(VERSION_US)
     MenuDrawStr(g_MenuStr[97], 120, 40, ctx);
@@ -1533,10 +1599,18 @@ void MenuFamiliarsDraw(MenuContext* ctx) {
 #elif defined(VERSION_HD)
     func_800F66BC(D_800A2D68[26], 136, 36, ctx, 1);
 #endif
+#if defined(MOD_SATURN)
+    // Saturn port: the JP familiars too (their stats are kept elsewhere)
     for (i = 0; i < NUM_FAMILIARS; i++) {
+#else
+    for (i = 0; i < FAMILIARS_STORED; i++) {
+#endif
         if (D_801375E0[i] == 0) {
             continue;
         }
+#if defined(MOD_SATURN)
+        ModGetFamiliarStats(i, &stats);
+#endif
         x = ((i & 1) * 172) + 48;
         y = ((i / 2) * 40) + 68;
         if (i == FAM_STATS_NOSE_DEMON) {
@@ -1549,15 +1623,25 @@ void MenuFamiliarsDraw(MenuContext* ctx) {
         } else {
             strId = 43;
         }
-        MenuDrawStr(g_MenuStr[strId], x + 56, y, ctx);
+#define MOD_FAM_LABEL_X 56
+#define MOD_FAM_NUM_X 112
+        MenuDrawStr(g_MenuStr[strId], x + MOD_FAM_LABEL_X, y, ctx);
+#if defined(MOD_SATURN)
+        MenuDrawInt(stats.level, x + MOD_FAM_NUM_X, y, ctx);
+#else
         MenuDrawInt(g_Status.statsFamiliars[i].level, x + 112, y, ctx);
+#endif
         if (i < FAM_STATS_YOUSEI) {
             strId = 5;
         } else {
             strId = 44;
         }
-        MenuDrawStr(g_MenuStr[strId], x + 56, y + 16, ctx);
+        MenuDrawStr(g_MenuStr[strId], x + MOD_FAM_LABEL_X, y + 16, ctx);
+#if defined(MOD_SATURN)
+        MenuDrawInt(stats.exp % 100, x + MOD_FAM_NUM_X, y + 16, ctx);
+#else
         MenuDrawInt(g_Status.statsFamiliars[i].exp % 100, x + 112, y + 16, ctx);
+#endif
         switch (i) {
         case FAM_STATS_BAT:
             MenuDrawImg(ctx, 16, 64, 24, 30, 104, 129, 0x1D2, 0x1E, 1, 0);
@@ -1612,8 +1696,8 @@ void MenuSystemDraw(MenuContext* ctx) {
     s32 strIdx;
     s32 y = 0x30;
 
-    func_800F5E68(ctx, g_MenuNavigation.cursorSettings, 30, 46, Width, 12, 4,
-                  g_MenuStep == MENU_STEP_SYSTEM);
+    MOD_SYSOPT_BOX(ctx, g_MenuNavigation.cursorSettings, 30, 46, Width, 12, 4,
+                   g_MenuStep == MENU_STEP_SYSTEM);
 
     MenuDrawStr(g_MenuStr[16], 0x20, y, ctx);
     y += 0x10;
@@ -1706,18 +1790,19 @@ void func_800F8754(MenuContext* ctx, s32 x, s32 y) {
         D_8013784C = 1;
     }
 
-    MenuDrawStr(g_MenuStr[93], x + 14, y + 20, ctx);
+#define MOD_HEAD_X(us, pt) (us)
+    MenuDrawStr(g_MenuStr[93], x + MOD_HEAD_X(14, 14), y + 20, ctx);
     if (D_801375E0[NUM_FAMILIARS] == 0) {
         D_8013784C = 1;
     } else {
         D_8013784C = 0;
     }
 
-    MenuDrawStr(g_MenuStr[96], x + 2, y + 68, ctx);
+    MenuDrawStr(g_MenuStr[96], x + MOD_HEAD_X(2, 10), y + 68, ctx);
     D_8013784C = 0;
-    MenuDrawStr(g_MenuStr[92], x + 18, y + 4, ctx);
-    MenuDrawStr(g_MenuStr[94], x + 14, y + 36, ctx);
-    MenuDrawStr(g_MenuStr[95], x + 14, y + 52, ctx);
+    MenuDrawStr(g_MenuStr[92], x + MOD_HEAD_X(18, 10), y + 4, ctx);
+    MenuDrawStr(g_MenuStr[94], x + MOD_HEAD_X(14, 2), y + 36, ctx);
+    MenuDrawStr(g_MenuStr[95], x + MOD_HEAD_X(14, 10), y + 52, ctx);
 }
 #elif defined(VERSION_PSP)
 void func_800F8754(MenuContext* ctx, s32 x, s32 y) {
@@ -1928,7 +2013,7 @@ void DrawConsumableCount(s32 itemId, s32 hand, MenuContext* ctx) {
 #endif
     *ptr++ = '\0';
     // Draw it after the item name. X=224, Y = 30 + 13*hand
-    MenuDrawStr(buf, 224, 30 + (hand * 13), ctx);
+    MenuDrawStr(buf, 224, 30 + (hand * MOD_EQUIP_PITCH()), ctx);
 }
 
 u8 D_800A2D80[] = {0x00, 0x20, 0x30, 0x40, 0x50, 0x60, 0x69, 0x70,
@@ -2102,24 +2187,39 @@ void MenuDraw(void) {
 
             equipIndex = g_Status.equipment[RIGHT_HAND_SLOT];
             equip = &g_EquipDefs[equipIndex];
-            MenuDrawStr(equip->name, 112, 43, menu);
+            MenuDrawStr(equip->name, 112, 30 + MOD_EQUIP_PITCH(), menu);
             DrawConsumableCount(equipIndex, RIGHT_HAND_SLOT, menu);
             flag = equip->itemCategory == 5;
             LoadEquipIcon(equip->icon, equip->iconPalette, 0x11);
 
             for (j = 0; j < 5; j++) {
                 acc = &g_AccessoryDefs[g_Status.equipment[j + 2]];
-                MenuDrawStr(acc->name, 112, 56 + j * 13, menu);
+                MenuDrawStr(acc->name, 112,
+                            30 + ModEquipRow(j + 2) * MOD_EQUIP_PITCH(), menu);
                 LoadEquipIcon(acc->icon, acc->iconPalette, j + 0x12);
             }
+#if defined(MOD_SATURN)
+            // the third hand's row (its icon: slot 0x10 + MOD_HOLDER_SLOT)
+            if (ModHolderOn()) {
+                equipIndex = ModHolderItem();
+                equip = &g_EquipDefs[equipIndex];
+                MenuDrawStr(equip->name, 112, 30 + 2 * MOD_EQUIP_PITCH(), menu);
+                DrawConsumableCount(equipIndex, 2, menu);
+                LoadEquipIcon(
+                    equip->icon, equip->iconPalette, 0x10 + MOD_HOLDER_SLOT);
+            }
+#endif
 
-            for (j = 0; j < 7; j++) {
+            for (j = 0; j < MOD_EQUIP_ROWS(); j++) {
                 if ((j == 0 || j == 1) && flag) {
                     if (j == 0) {
-                        func_800F892C(j + 0x10, 0x5E, 0x20 + j * 13, menu);
+                        func_800F892C(
+                            j + 0x10, 0x5E, 0x1A + MOD_EQUIP_PITCH() / 2, menu);
                     }
                 } else {
-                    func_800F892C(j + 0x10, 0x5E, 0x1A + j * 13, menu);
+                    func_800F892C(
+                        j + 0x10, 0x5E,
+                        0x1A + ModEquipRow(j) * MOD_EQUIP_PITCH(), menu);
                 }
             }
             func_800F6618(i, g_MenuStep != 0x40);
@@ -2151,7 +2251,7 @@ void MenuDraw(void) {
             MenuReverseCloakDraw(menu);
             break;
         case MENU_DG_CFG_SOUND:
-            MenuSoundConfigDraw(menu);
+            MOD_SYSOPT_SOUND(menu); // (Saturn port: or the popup)
             break;
         case MENU_DG_WINDOW_COLORS:
             MenuWindowColorsDraw(menu);
@@ -2409,6 +2509,7 @@ void func_800F99B8(const char* str, u32 y, bool arg2) {
 }
 #endif
 
+#if !defined(MOD_DRA_STRIP) // JP text, only HD calls it
 void func_800F9D40(const char* str, u32 y, bool arg2) {
     if (arg2) {
         D_8013794C = g_Pix[2];
@@ -2418,6 +2519,7 @@ void func_800F9D40(const char* str, u32 y, bool arg2) {
     D_80137954 = 0x100;
     func_800F98AC(str, y);
 }
+#endif
 
 #if defined(VERSION_US) || defined(VERSION_PSP)
 void func_800F9D88(const char* str, u32 y, bool arg2) {
@@ -2451,6 +2553,13 @@ void func_800F9E18(s32 arg0) {
     s32 nItems = i;
 
     static RECT D_800A2D90 = {0x180, 0x30, 0x80, 0x80};
+
+#if defined(MOD_GODSPEED)
+    // Saturn port: g_RelicDefs ends at 32 entries (God Speed Shoes, blank)
+    if (nItems > 16) {
+        nItems = 16;
+    }
+#endif
 
     if (arg0 == 0) {
         ClearImage(&D_800A2D90, 0, 0, 0);
@@ -2769,7 +2878,13 @@ void CheckWeaponCombo(void) {
     combo |= g_EquipDefs[leftHand].comboMain & g_EquipDefs[rightHand].comboSub;
 
     if (combo != 0) {
+#if defined(MOD_SATURN)
+        // Saturn port: the special records moved up, and the Saturn's new
+        // ones follow them
+        for (i = MOD_SPECIAL(0xAA); i < MOD_NUM_EQUIP_DEFS; i++) {
+#else
         for (i = 0xAA; i < 0xD9; i++) {
+#endif
             if (combo & g_EquipDefs[i].comboSub) {
                 D_8013AEE4 = handFlag + i;
                 return;
@@ -2785,7 +2900,7 @@ bool LoadWeaponPrg(s32 equipIndex) {
 
     equipId = g_Status.equipment[equipIndex];
     if (g_Status.equipment[ARMOR_SLOT] == ITEM_AXE_LORD_ARMOR) {
-        equipId = 0xD8;
+        equipId = MOD_SPECIAL(0xD8);
     }
 
     weaponId = g_EquipDefs[equipId].weaponId;
@@ -2824,7 +2939,7 @@ void InitWeapon(s32 itemSlot) {
 
     // Having the Axe Lord Armor equipped will not load any normal weapon
     if (g_Status.equipment[ARMOR_SLOT] == ITEM_AXE_LORD_ARMOR) {
-        equipId = 0xD8;
+        equipId = MOD_SPECIAL(0xD8);
     }
 
     // Do not re-load the same weapon
@@ -2901,6 +3016,28 @@ void func_800FAC48(void) {
 void func_800FAC98(void) { func_800F9808(2); }
 
 bool func_800FACB8(void) {
+#if defined(MOD_SATURN)
+    if (g_pads[0].tapped & PAD_R2) {
+        g_MenuNavigation.cursorEquip =
+            ModEquipRow(g_MenuNavigation.cursorEquip) + 1;
+        if (g_MenuNavigation.cursorEquip >= MOD_EQUIP_ROWS()) {
+            g_MenuNavigation.cursorEquip = 0;
+        }
+        g_MenuNavigation.cursorEquip =
+            ModEquipSlot(g_MenuNavigation.cursorEquip);
+        return true;
+    }
+    if (g_pads[0].tapped & PAD_L2) {
+        g_MenuNavigation.cursorEquip =
+            ModEquipRow(g_MenuNavigation.cursorEquip) - 1;
+        if (g_MenuNavigation.cursorEquip == -1) {
+            g_MenuNavigation.cursorEquip = MOD_EQUIP_ROWS() - 1;
+        }
+        g_MenuNavigation.cursorEquip =
+            ModEquipSlot(g_MenuNavigation.cursorEquip);
+        return true;
+    }
+#else
     if (g_pads[0].tapped & PAD_R2) {
         g_MenuNavigation.cursorEquip++;
         if (g_MenuNavigation.cursorEquip == 7) {
@@ -2915,6 +3052,7 @@ bool func_800FACB8(void) {
         }
         return true;
     }
+#endif
     return false;
 }
 
@@ -2933,6 +3071,15 @@ void func_800FAD34(const char* str, u8 count, u16 equipIcon, u16 palette) {
 void func_800FADC0(void) {
     s32 cursorEquip;
 
+#if defined(MOD_SATURN)
+    if (g_MenuNavigation.cursorEquip == MOD_HOLDER_SLOT) {
+        cursorEquip = ModHolderItem();
+        func_800FAD34(g_EquipDefs[cursorEquip].description, 1,
+                      g_EquipDefs[cursorEquip].icon,
+                      g_EquipDefs[cursorEquip].iconPalette);
+        return;
+    }
+#endif
     if (g_MenuNavigation.cursorEquip < 2) {
         cursorEquip = g_Status.equipment[g_MenuNavigation.cursorEquip];
         func_800FAD34(g_EquipDefs[cursorEquip].description, 1,
@@ -2967,7 +3114,7 @@ void func_800FAF44(bool isAccessory) {
     ptr = g_Pix[3];
 
     if (!isAccessory) {
-        for (i = 0; i < 169; i++) {
+        for (i = 0; i < HAND_ITEMS_CAP; i++) {
             *ptr++ = i;
         }
         g_Menus[MENU_DG_EQUIP_SELECTOR].h =
@@ -2977,7 +3124,7 @@ void func_800FAF44(bool isAccessory) {
         g_Menus[MENU_DG_EQUIP_SELECTOR].h =
             g_Menus[MENU_DG_EQUIP_SELECTOR].unk16 =
                 g_MenuNavigation.scrollEquipType[EQUIP_HEAD + D_801375D4];
-        for (i = 0; i < 90; i++) {
+        for (i = 0; i < BODY_ITEMS_CAP; i++) {
             if (g_AccessoryDefs[i].equipType == D_801375D4) {
                 *ptr++ = i;
             }
@@ -3016,6 +3163,9 @@ EquipMenuHelper g_EquipMenuHelper[] = {
     {EQUIP_CAPE, 2, true},      // CAPE_SLOT
     {EQUIP_ACCESSORY, 3, true}, // ACCESSORY_1_SLOT
     {EQUIP_ACCESSORY, 3, true}, // ACCESSORY_2_SLOT
+#if defined(MOD_SATURN)
+    {EQUIP_HAND, 0, false}, // MOD_HOLDER_SLOT
+#endif
 };
 
 // original name : PSX_id_init
@@ -3151,7 +3301,10 @@ s32 func_800FB23C(s32* nav, u8* order, u8* count, u32* selected) {
         *selected = 0;
     }
 
-    if (D_801375CC == EQUIP_HAND) {
+#if defined(MOD_SATURN)
+    yetAnotherId = 0;
+#endif
+    if (D_801375CC == EQUIP_HAND && MOD_HAND_PAIR()) {
         yetAnotherId = g_Status.equipment[1 - D_801375D0];
         if (count[itemId] != 0) {
             if (g_EquipDefs[prevItemId].itemCategory == ITEM_TWOHAND) {
@@ -3171,15 +3324,26 @@ s32 func_800FB23C(s32* nav, u8* order, u8* count, u32* selected) {
          g_Player.grabState) &&
         itemId == ITEM_AXE_LORD_ARMOR && D_801375CC == EQUIP_ARMOR &&
         count[itemId] != 0;
+#if defined(MOD_SATURN)
+    // the Saturn (func_060737A0) also refuses the Signed Pencil Board in any
+    // hand, both balances; the holder takes only food and medicine
+    // (mod_holder.h ModHolderAllows)
+    var_s6 |= D_801375CC == EQUIP_HAND && count[itemId] != 0 &&
+              (itemId == ITEM_LIFE_APPLE || itemId == ITEM_HAMMER ||
+               itemId == ITEM_SIGNED_PENCIL_BOARD);
+    var_s6 |= D_801375CC == EQUIP_HAND && D_801375D0 == 2 &&
+              count[itemId] != 0 && !ModHolderAllows(itemId);
+#else
     var_s6 |= D_801375CC == EQUIP_HAND && count[itemId] != 0 &&
               (itemId == ITEM_LIFE_APPLE || itemId == ITEM_HAMMER);
+#endif
     D_80137948 = 0;
     if (!var_s6) {
         D_80137948 = 1;
         func_800F7244();
     }
     *selected = prevItemId;
-    if (D_801375CC == EQUIP_HAND) {
+    if (D_801375CC == EQUIP_HAND && MOD_HAND_PAIR()) {
         g_Status.equipment[1 - D_801375D0] = yetAnotherId;
     }
     make_all();
@@ -3242,7 +3406,7 @@ s32 func_800FB23C(s32* nav, u8* order, u8* count, u32* selected) {
                 }
             }
             AddToInventory(prevItemId, D_801375CC);
-            if (D_801375CC == EQUIP_HAND) {
+            if (D_801375CC == EQUIP_HAND && MOD_HAND_PAIR()) {
                 if (g_EquipDefs[prevItemId].itemCategory == ITEM_TWOHAND) {
                     g_Status.equipment[1 - D_801375D0] = 0;
                 }
@@ -3302,7 +3466,11 @@ s32 func_800FB23C(s32* nav, u8* order, u8* count, u32* selected) {
 
 void func_800FB9BC(void) {
     const s32 ItemsPerRow = 2;
-#if defined(VERSION_US)
+#if defined(MOD_GODSPEED)
+    // 31 relics, 16 rows (see MENU_STEP_RELIC)
+    const s32 VertScrollWindow = 160;
+    const s32 YScrollPerElement = 16;
+#elif defined(VERSION_US)
     const s32 VertScrollWindow = 120;
     const s32 YScrollPerElement = 14;
 #elif defined(VERSION_HD) || defined(VERSION_PSP)
@@ -3350,7 +3518,7 @@ void func_800FBAC4(void) {
     *ptr++ = 0;
     for (i = 0; i < ITEM_END; i++) {
         s32 importantcategory = g_Settings.equipOrderTypes[i];
-        for (j = 0; j < NUM_HAND_ITEMS; j++) {
+        for (j = 0; j < HAND_ITEMS_CAP; j++) {
             s32 order = g_Status.equipHandOrder[j];
             if (g_Status.equipHandCount[order] != 0 && order != 0 &&
                 g_EquipDefs[order].itemCategory == importantcategory) {
@@ -3358,7 +3526,7 @@ void func_800FBAC4(void) {
             }
         }
     }
-    for (j = 0; j < NUM_HAND_ITEMS; j++) {
+    for (j = 0; j < HAND_ITEMS_CAP; j++) {
         s32 order = g_Status.equipHandOrder[j];
         if (g_Status.equipHandCount[order] == 0) {
             *ptr++ = order;
@@ -3366,7 +3534,7 @@ void func_800FBAC4(void) {
     }
 
     ptr = D_801375D8;
-    for (i = 0; i < NUM_HAND_ITEMS; i++) {
+    for (i = 0; i < HAND_ITEMS_CAP; i++) {
         g_Status.equipHandOrder[i] = *ptr++;
     }
 }
@@ -3408,8 +3576,8 @@ block_4:
         g_PrevEquippedWeapons[RIGHT_HAND_SLOT] =
             g_Status.equipment[RIGHT_HAND_SLOT];
         if (g_Status.equipment[ARMOR_SLOT] == ITEM_AXE_LORD_ARMOR) {
-            g_PrevEquippedWeapons[LEFT_HAND_SLOT] = 0xD8;
-            g_PrevEquippedWeapons[RIGHT_HAND_SLOT] = 0xD8;
+            g_PrevEquippedWeapons[LEFT_HAND_SLOT] = MOD_SPECIAL(0xD8);
+            g_PrevEquippedWeapons[RIGHT_HAND_SLOT] = MOD_SPECIAL(0xD8);
         }
         g_ServantPrevious = g_Servant;
         for (i = 0; i < NUM_SPELLS; i++) {
@@ -3540,9 +3708,13 @@ block_4:
         if (g_Servant == FAM_ACTIVE_NONE || g_Servant == g_ServantLoaded) {
             if (g_Servant != FAM_ACTIVE_NONE) {
                 if (g_Servant != g_ServantPrevious) {
+#if defined(MOD_SATURN)
+                    ModCountFamiliarSummon();
+#else
                     if (g_Status.statsFamiliars[g_Servant - 1].unk8 < 9999) {
                         g_Status.statsFamiliars[g_Servant - 1].unk8++;
                     }
+#endif
                     InitializeServant(MENU_SWITCH_SERVANT);
                 } else {
                     InitializeServant(MENU_SAME_SERVANT);
@@ -3573,9 +3745,13 @@ block_4:
         }
         InitializeServant(MENU_SWITCH_SERVANT);
         g_ServantLoaded = g_Servant;
+#if defined(MOD_SATURN)
+        ModCountFamiliarSummon();
+#else
         if (g_Status.statsFamiliars[g_Servant - 1].unk8 < 9999) {
             g_Status.statsFamiliars[g_Servant - 1].unk8++;
         }
+#endif
         g_MenuStep++;
         break;
     case MENU_STEP_EXIT_12:
@@ -3744,7 +3920,7 @@ block_4:
         MenuShow(MENU_DG_SETTINGS);
         g_MenuStep++;
     case MENU_STEP_SYSTEM:
-        MenuHandleCursorInput(&g_MenuNavigation.cursorSettings, 6, 0);
+        MOD_SYSOPT_INPUT(&g_MenuNavigation.cursorSettings, 6, 0);
         func_800F9808(2);
         i = g_MenuNavigation.cursorSettings + 1;
         if (i == 2 && !g_IsCloakLiningUnlocked) {
@@ -3766,6 +3942,15 @@ block_4:
         } else if (g_pads[0].tapped & PAD_MENU_SELECT) {
             switch (g_MenuNavigation.cursorSettings) {
             case 0:
+#if defined(MOD_SATURN)
+                // 8 rows (rows end at 0x30 + 8 * 16) with the holder
+                g_Menus[MENU_DG_CFG_BUTTONS].cursorH =
+                    g_Menus[MENU_DG_CFG_BUTTONS].unk1.h =
+                        MOD_BUTTON_ROWS() == 8 ? 128 : 112;
+                if (g_MenuNavigation.cursorButtons >= MOD_BUTTON_ROWS()) {
+                    g_MenuNavigation.cursorButtons = 0;
+                }
+#endif
                 MenuShow(MENU_DG_CFG_BUTTONS);
                 g_MenuStep = MENU_STEP_SYSTEM_BUTTONS;
                 break;
@@ -3805,7 +3990,8 @@ block_4:
         }
         break;
     case MENU_STEP_SYSTEM_BUTTONS:
-        MenuHandleCursorInput(&g_MenuNavigation.cursorButtons, 7, 0);
+        MenuHandleCursorInput(
+            &g_MenuNavigation.cursorButtons, MOD_BUTTON_ROWS(), 0);
         MenuHandleCursorInput(
             &g_Settings.buttonConfig[g_MenuNavigation.cursorButtons], 8, 5);
         if (g_pads[0].tapped & PAD_MENU_BACK_ALT) {
@@ -3901,6 +4087,14 @@ block_4:
         MenuShow(MENU_DG_RELICS);
         func_800F9808(2);
         id = g_MenuNavigation.cursorRelic;
+#if defined(MOD_GODSPEED)
+        // Saturn port: no skipped slots; relic 30 is God Speed Shoes
+        if (MOD_RELIC_FLAGS(id) & RELIC_FLAG_FOUND) {
+            ShowText(g_RelicDefs[id].desc, 2);
+        }
+        func_800F9E18(2);
+        func_800F9E18(3); // names of relics 30 (God Speed Shoes) and 31
+#else
 #if defined(VERSION_US)
         if (id >= RELIC_JP_0) {
             id += 2; // Skip the two exclusive Japanese relics
@@ -3910,10 +4104,15 @@ block_4:
             ShowText(g_RelicDefs[id].desc, 2);
         }
         func_800F9E18(2);
+#endif
         g_MenuStep++;
         break;
     case MENU_STEP_RELIC:
-#if defined(VERSION_US)
+#if defined(MOD_GODSPEED)
+        // 31 relics make 16 rows, one more than the HD/PSP menu
+        g_Menus[MENU_DG_RELICS].unk16 =
+            ((g_MenuNavigation.cursorRelic / 2) * -160) / 16;
+#elif defined(VERSION_US)
         g_Menus[MENU_DG_RELICS].unk16 =
             ((g_MenuNavigation.cursorRelic / 2) * -120) / 14;
 #elif defined(VERSION_HD) || defined(VERSION_PSP)
@@ -3921,7 +4120,8 @@ block_4:
             ((g_MenuNavigation.cursorRelic / 2) * -140) / 15;
 #endif
         var_s1 = g_MenuNavigation.cursorRelic;
-#if defined(VERSION_US)
+#if defined(MOD_GODSPEED)
+#elif defined(VERSION_US)
         if (var_s1 >= RELIC_JP_0) {
             var_s1 += 2; // Skip the two exclusive Japanese relics
         }
@@ -3929,6 +4129,12 @@ block_4:
         MenuHandleCursorInput(
             &g_MenuNavigation.cursorRelic, NUM_AVAIL_RELICS, 1);
         id = g_MenuNavigation.cursorRelic;
+#if defined(MOD_GODSPEED)
+        if (g_pads[0].tapped & PAD_MENU_SELECT &&
+            MOD_RELIC_FLAGS(id) & RELIC_FLAG_FOUND) {
+            PlaySfx(SFX_UI_CONFIRM);
+            MOD_RELIC_FLAGS(id) ^= 2;
+#else
 #if defined(VERSION_US)
         if (id >= RELIC_JP_0) {
             id += 2; // Skip the two exclusive Japanese relics
@@ -3938,6 +4144,7 @@ block_4:
             g_Status.relics[id] & RELIC_FLAG_FOUND) {
             PlaySfx(SFX_UI_CONFIRM);
             g_Status.relics[id] = g_Status.relics[id] ^ 2;
+#endif
             if (g_RelicDefs[id].unk0C > 0) {
                 for (i = 0; i < NUM_RELICS; i++) {
                     if (i == id) {
@@ -3975,13 +4182,21 @@ block_4:
         }
         if (var_s1 != id) {
             func_800F9808(2);
+#if defined(MOD_GODSPEED)
+            if (MOD_RELIC_FLAGS(id) & RELIC_FLAG_FOUND) {
+#else
             if (g_Status.relics[id] & RELIC_FLAG_FOUND) {
+#endif
                 ShowText(g_RelicDefs[id].desc, 2);
             }
         }
 
         D_80137608 = 0;
+#if defined(MOD_GODSPEED)
+        if (MOD_RELIC_FLAGS(id) & RELIC_FLAG_FOUND) {
+#else
         if (g_Status.relics[id] & RELIC_FLAG_FOUND) {
+#endif
             D_80137608 = 1;
             LoadEquipIcon(
                 g_RelicDefs[id].icon, g_RelicDefs[id].iconPalette, 0x1F);
@@ -4079,9 +4294,22 @@ block_4:
         break;
     case MENU_STEP_EQUIP:
         D_80137948 = 0;
+#if defined(MOD_SATURN)
+        if (g_MenuNavigation.cursorEquip >= MOD_EQUIP_ROWS()) {
+            g_MenuNavigation.cursorEquip = 0; // a holder row from another game
+        }
+#endif
         func_800FB0FC();
         var_s1 = g_MenuNavigation.cursorEquip;
+#if defined(MOD_SATURN)
+        g_MenuNavigation.cursorEquip = ModEquipRow(var_s1);
+        MenuHandleCursorInput(
+            &g_MenuNavigation.cursorEquip, MOD_EQUIP_ROWS(), 0);
+        g_MenuNavigation.cursorEquip =
+            ModEquipSlot(g_MenuNavigation.cursorEquip);
+#else
         MenuHandleCursorInput(&g_MenuNavigation.cursorEquip, NUM_ITEM_SLOTS, 0);
+#endif
         MenuEquipHandlePageScroll(1);
         func_800FB0FC();
         if (var_s1 != g_MenuNavigation.cursorEquip) {
@@ -4106,7 +4334,11 @@ block_4:
             PlaySfx(SFX_UI_CONFIRM);
         block_191:
             func_800FB0FC();
-            if (g_MenuNavigation.cursorEquip < HEAD_SLOT) {
+            if (g_MenuNavigation.cursorEquip < HEAD_SLOT
+#if defined(MOD_SATURN)
+                || g_MenuNavigation.cursorEquip == MOD_HOLDER_SLOT
+#endif
+            ) {
                 g_MenuStep = MENU_STEP_EQUIP_HAND_INIT;
             } else {
                 g_MenuStep = MENU_STEP_EQUIP_ACC_INIT;
@@ -4136,14 +4368,29 @@ block_4:
             g_EquipDefs[equipId].icon, g_EquipDefs[equipId].iconPalette);
         func_800FAF44(false);
     case MENU_STEP_EQUIP_HAND:
-        if (g_MenuNavigation.cursorEquip == LEFT_HAND_SLOT) {
-            D_801375D0 = LEFT_HAND_SLOT;
-        } else {
-            D_801375D0 = RIGHT_HAND_SLOT;
+#if defined(MOD_SATURN)
+        if (g_MenuNavigation.cursorEquip == MOD_HOLDER_SLOT) {
+            // the third hand: hand 2 (as the Saturn's D_801375D0), its u8
+            // through a u32 for the select
+            u32 holder = ModHolderItem();
+
+            D_801375D0 = 2;
+            i = func_800FB23C(
+                &g_MenuNavigation.cursorHandEquipType, g_Status.equipHandOrder,
+                g_Status.equipHandCount, &holder);
+            MOD_HOLDER_ITEM = holder;
+        } else
+#endif
+        {
+            if (g_MenuNavigation.cursorEquip == LEFT_HAND_SLOT) {
+                D_801375D0 = LEFT_HAND_SLOT;
+            } else {
+                D_801375D0 = RIGHT_HAND_SLOT;
+            }
+            i = func_800FB23C(
+                &g_MenuNavigation.cursorHandEquipType, g_Status.equipHandOrder,
+                g_Status.equipHandCount, &g_Status.equipment[D_801375D0]);
         }
-        i = func_800FB23C(
-            &g_MenuNavigation.cursorHandEquipType, g_Status.equipHandOrder,
-            g_Status.equipHandCount, &g_Status.equipment[D_801375D0]);
         if (i == 2) {
             equipId =
                 g_Status.equipHandOrder[g_MenuNavigation.cursorHandEquipType];
@@ -4194,6 +4441,7 @@ block_4:
 }
 
 #if defined(VERSION_US)
+#if !defined(MOD_DRA_STRIP) // no caller in the US build
 void func_800FD39C(s32 x, s32 y, s32 w, s32 h, s32 u, s32 v, s32 pal, s32 _,
                    s32 blend, s32 color) {
     GpuBuffer* gpuBuffer;
@@ -4214,6 +4462,7 @@ void func_800FD39C(s32 x, s32 y, s32 w, s32 h, s32 u, s32 v, s32 pal, s32 _,
     AddPrim(&gpuBuffer->ot[0x1FF], sprt);
     g_GpuUsage.sp++;
 }
+#endif
 #endif
 
 #if defined(VERSION_PSP)

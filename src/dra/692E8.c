@@ -640,7 +640,14 @@ void EntityAlucard() {
     if (D_800ACE44 != 0) {
         D_800ACE44--;
     }
-    if (g_unkGraphicsStruct.D_800973FC != 0 && D_80137FB8 == 0) {
+    // Saturn port: the Saturn has no time-stop dim on Alucard (its entity
+    // 0x40 just destroys itself), so the mod spawns it only with the PS1
+    // balance (Player Select Balance row)
+    if (g_unkGraphicsStruct.D_800973FC != 0 && D_80137FB8 == 0
+#if defined(MOD_SATURN)
+        && MOD_PS1_BALANCE()
+#endif
+    ) {
         CreateEntFactoryFromEntity(g_CurrentEntity, BP_120, 0);
     }
     D_80137FB8 = g_unkGraphicsStruct.D_800973FC;
@@ -696,6 +703,12 @@ void EntityAlucard() {
         CreateEntFactoryFromEntity(
             g_CurrentEntity, FACTORY(BP_LEVEL_UP_TEXT, i - 1), 0);
     }
+#if defined(MOD_GODSPEED)
+    // Saturn counts this down as an extra entry of its bigger timers array
+    if (g_GodspeedTapTimer) {
+        g_GodspeedTapTimer--;
+    }
+#endif
     for (i = 0; i < 16; i++) {
         if (g_Player.timers[i]) {
             switch (i) {
@@ -868,6 +881,8 @@ void EntityAlucard() {
         g_Player.padTapped &= ~(PAD_SQUARE | PAD_CIRCLE);
         g_Player.padPressed &= ~(PAD_SQUARE | PAD_CIRCLE);
     }
+#if !defined(MOD_DRA_STRIP)
+    // US MainGame sets g_DebugPlayer = 0 for good: the debug fly mode is dead
     if ((g_DebugPlayer != 0) && (func_801119C4() != 0)) {
 #ifdef VERSION_US
         FntPrint("step:%04x\n", PLAYER.step);
@@ -875,6 +890,7 @@ void EntityAlucard() {
 #endif
         return;
     }
+#endif
     if ((g_unkGraphicsStruct.D_8009744C != 0) &&
         (IsRelicActive(RELIC_HOLY_SYMBOL) == 0) && !(PLAYER.hitParams & 0x1F)) {
         PLAYER.hitParams = 6;
@@ -1023,7 +1039,7 @@ specialmove:
         if (g_unkGraphicsStruct.D_8009744C == 0) {
             if (CHECK_SHOULDER(BTN_MIST) &&
                 (HandleTransformationMP(FORM_MIST, CHECK_ONLY) == 0) &&
-                (PLAYER.step == Player_Stand || PLAYER.step == Player_Walk ||
+                (PLAYER.step == Player_Stand || IS_WALK_STEP(PLAYER.step) ||
                  PLAYER.step == Player_Crouch || PLAYER.step == Player_Fall ||
                  PLAYER.step == Player_Jump ||
                  PLAYER.step == Player_AlucardStuck ||
@@ -1038,7 +1054,7 @@ specialmove:
             }
             if (CHECK_SHOULDER(PAD_R1) &&
                 (HandleTransformationMP(FORM_BAT, CHECK_ONLY) == 0) &&
-                (PLAYER.step == Player_Stand || PLAYER.step == Player_Walk ||
+                (PLAYER.step == Player_Stand || IS_WALK_STEP(PLAYER.step) ||
                  PLAYER.step == Player_Crouch || PLAYER.step == Player_Fall ||
                  PLAYER.step == Player_Jump ||
                  PLAYER.step == Player_AlucardStuck ||
@@ -1060,7 +1076,7 @@ specialmove:
             (HandleTransformationMP(FORM_WOLF, CHECK_ONLY) == 0) &&
             ((g_unkGraphicsStruct.D_8009744C == 0) ||
              IsRelicActive(RELIC_HOLY_SYMBOL)) &&
-            (PLAYER.step == Player_Stand || PLAYER.step == Player_Walk ||
+            (PLAYER.step == Player_Stand || IS_WALK_STEP(PLAYER.step) ||
              PLAYER.step == Player_Crouch || PLAYER.step == Player_Fall ||
              PLAYER.step == Player_Jump || PLAYER.step == Player_AlucardStuck ||
              PLAYER.step == Player_HighJump ||
@@ -1075,6 +1091,12 @@ block_159:
     g_Player.prev_step = PLAYER.step;
     g_Player.prev_step_s = PLAYER.step_s;
     D_800ACDF8 = g_Player.timers[ALU_T_DARKMETAMORPH];
+#if defined(MOD_ULTIMATE_DEBUG)
+    FntPrint("\n\n\n\n\n\n\n\nST %02X/%02X A46 %04X A44 %04X\n", PLAYER.step,
+             PLAYER.step_s, g_Player.unk46, g_Player.unk44);
+    FntPrint("TAP %d POSE %d/%d ANIM %02X\n", g_GodspeedTapTimer, PLAYER.pose,
+             g_Player.unk54, PLAYER.ext.player.anim);
+#endif
     switch (PLAYER.step) {
     case Player_Stand:
         PlayerStepStand();
@@ -1133,6 +1155,11 @@ block_159:
     case Player_Teleport:
         PlayerStepTeleport();
         break;
+#if defined(MOD_GODSPEED)
+    case Player_FlameWhip:
+        PlayerStepGodspeedSprint();
+        break;
+#endif
     case Player_SpellDarkMetamorphosis:
         PlayerStepDarkMetamorphosis();
         break;
@@ -1195,6 +1222,9 @@ block_159:
         newStatus |= PLAYER_STATUS_UNK10000000;
         break;
     case Player_Walk:
+#if defined(MOD_GODSPEED)
+    case Player_FlameWhip: // God Speed Shoes sprint counts as walking
+#endif
         newStatus = PLAYER_STATUS_UNK4000000;
         // fallthrough
     case Player_Stand:

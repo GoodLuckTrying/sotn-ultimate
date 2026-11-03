@@ -52,11 +52,32 @@ s32 g_CapePaletteDefs[] = {
     ITEM_TWILIGHT_CLOAK, 0x40A, CAPE_PAL_TERMINATOR, 0x409,
 };
 
+#if defined(MOD_SATURN_ITEMS)
+#include "../../mods/sotn-ultimate/src/items/5F60C_mod_glaring_cape.h"
+#endif
+
 void UpdateCapePalette(void) {
     s32 clut;
     s32 i;
 
     func_800EA538(6);
+
+#if defined(MOD_SATURN)
+    if (g_Status.equipment[CAPE_SLOT] == ITEM_GLARING_CLOTH ||
+        g_Status.equipment[CAPE_SLOT] == ITEM_RAINBOW_MANTLE) {
+        // func_800EA5E4 only loads descriptors from D_800A3BB8 and keeps the
+        // pointer it finds there; lend it the no-cape entry for this call.
+        // Both use the no-cape colours as a base on the Saturn, and every
+        // colour they touch is overwritten each frame anyway.
+        u_long* saved = D_800A3BB8[9];
+        D_800A3BB8[9] = g_Status.equipment[CAPE_SLOT] == ITEM_GLARING_CLOTH
+                            ? (u_long*)g_ModGlaringCapePal
+                            : (u_long*)g_ModRainbowCapePal;
+        func_800EA5E4(0x409);
+        D_800A3BB8[9] = saved;
+        return;
+    }
+#endif
 
     i = 0;
     while (1) {
@@ -88,6 +109,7 @@ void RefreshCapePalette(void) {
     }
 }
 
+#if !defined(MOD_DRA_STRIP) // only a non-US branch calls it
 void func_800FF708(s32 equipType, s32 slot) {
     s32 rnd;
 
@@ -97,6 +119,7 @@ void func_800FF708(s32 equipType, s32 slot) {
     }
     (g_Status.equipment + 2)[slot] = rnd;
 }
+#endif
 
 char* g_LuckCode = "x-x!v''q";
 char* g_AxeArmorCode = "axearmor";
@@ -192,18 +215,19 @@ void InitStatsAndGear(bool isDeathTakingItems) {
     g_Status.level = 1;
     g_Status.killCount = 0;
 
-    for (i = 0; i < NUM_FAMILIARS; i++) {
+    // Saturn port: only the stored familiars (US drops the JP-only two)
+    for (i = 0; i < FAMILIARS_STORED; i++) {
         g_Status.statsFamiliars[i].level = 1;
         g_Status.statsFamiliars[i].exp = 0;
         g_Status.statsFamiliars[i].unk8 = 0;
     }
 
-    for (i = 0; i < 169; i++) {
+    for (i = 0; i < HAND_ITEMS_CAP; i++) {
         g_Status.equipHandCount[i] = 0;
         g_Status.equipHandOrder[i] = i;
     }
 
-    for (i = 0; i < 90; i++) {
+    for (i = 0; i < BODY_ITEMS_CAP; i++) {
         g_Status.equipBodyCount[i] = 0;
         g_Status.equipBodyOrder[i] = i;
     }
@@ -237,7 +261,11 @@ void InitStatsAndGear(bool isDeathTakingItems) {
             g_Settings.timeAttackRecords[i] = 0;
         }
         g_Settings.D_8003CB00 = 0;
+#if defined(MOD_SKIP_ANY_CUTSCENE)
+        g_Settings.D_8003CB04 = MOD_ALL_SCENES_SEEN;
+#else
         g_Settings.D_8003CB04 = 0;
+#endif
 
         g_Status.subWeapon = 0;
 
@@ -248,8 +276,15 @@ void InitStatsAndGear(bool isDeathTakingItems) {
         }
 
         // Richter's stats table
+#if defined(MOD_SATURN)
+        // Saturn InitStatsAndGear (src/saturn/game_2a.c): 100 HP in a
+        // Richter game, 50 at the prologue (Saturn balance)
+        g_Status.hp = g_Status.hpMax =
+            g_StageId != STAGE_ST0 && !MOD_PS1_BALANCE() ? 100 : 50;
+#else
         g_Status.hp = 50;
         g_Status.hpMax = 50;
+#endif
         g_Status.hearts = 30;
         g_Status.heartsMax = 99;
         g_Status.mpMax = 20;
@@ -269,6 +304,9 @@ void InitStatsAndGear(bool isDeathTakingItems) {
         g_Status.equipment[CAPE_SLOT] = ITEM_NO_CAPE;
         g_Status.equipment[ACCESSORY_1_SLOT] = ITEM_NO_ACCESSORY;
         g_Status.equipment[ACCESSORY_2_SLOT] = ITEM_NO_ACCESSORY;
+#if defined(MOD_SATURN)
+        MOD_HOLDER_ITEM = ITEM_EMPTY_HAND; // the third hand (Saturn 6074CC8)
+#endif
 
         // Eliminate the time attacks that Richter can't do
         if (g_StageId == STAGE_NO3) {
@@ -303,6 +341,10 @@ void InitStatsAndGear(bool isDeathTakingItems) {
         for (i = 0; i < LEN(g_Status.relics); i++) {
             g_Status.relics[i] = RELIC_FLAG_DISABLE;
         }
+#if defined(MOD_GODSPEED_TEST_START)
+        MOD_RELIC_FLAGS(RELIC_GODSPEED_SHOES) =
+            RELIC_FLAG_FOUND | RELIC_FLAG_ACTIVE;
+#endif
 
         // If we died in prologue and needed Maria's rescue
         if (D_801397FC != 0) {
@@ -441,6 +483,15 @@ void InitStatsAndGear(bool isDeathTakingItems) {
             if (i == 8) {
                 AddToInventory(ITEM_AXE_LORD_ARMOR, EQUIP_ARMOR);
             }
+#if defined(MOD_SATURN)
+            // Saturn name code (game_2a.c): "GTI-CLUB" after a game clear
+            // starts with 250,000 gold. Compared as two words (saveName is
+            // 4-aligned) to fit DRA's pad: "gti-" and "club", little endian.
+            if (((u32*)g_Status.saveName)[0] == 0x2D697467 &&
+                ((u32*)g_Status.saveName)[1] == 0x62756C63) {
+                g_Status.gold = 250000;
+            }
+#endif
         }
     } else {
         // This Else block is for this function if called outside
@@ -485,7 +536,7 @@ void InitStatsAndGear(bool isDeathTakingItems) {
             g_Status.equipHandCount[i] = 50;
         }
         // And 1 of everything wearable
-        for (i = 0; i < 90; i++) {
+        for (i = 0; i < BODY_ITEMS_CAP; i++) {
             g_Status.equipBodyCount[i] = 1;
         }
 
@@ -611,11 +662,32 @@ static PlayerHud g_PlayerHud;
 #else
 #define RIC_HUD_NUM_SPRITES 9
 #endif
+#if defined(MOD_SATURN_MARIA) && !defined(VERSION_PSP)
+// Saturn port: the PSP Maria's two subweapon slots (Circle swaps them). Her
+// HUD has the PSP's extra sprite after the subweapon icon and her overlay
+// draws both icons on them (mods/sotn-ultimate/src/maria_psp/mar2.c, the PSP's
+// func_psp_090E4CD0) through g_ModMar2HudIcons (cd.c resets it).
+#define MOD_MAR2_HUD() (g_PlayableCharacter == PLAYER_MARIA && MOD_MARIA_PSP())
+Primitive* (*g_ModMar2HudIcons)(Primitive* prim) = NULL;
+#endif
+
+#if defined(MOD_SATURN_MARIA)
+static void MarHudInit(void);
+static void MarHudUpdate(void);
+#endif
 
 void DrawRichterHud(void) {
     s32 i;
     Primitive* prim;
 
+#if defined(MOD_SATURN_MARIA)
+    // Saturn port: the Saturn's own HUD for Maria (below); the PSP Maria
+    // has Richter's, with her icons (g_ModSubwpnIcons)
+    if (g_PlayableCharacter == PLAYER_MARIA && !MOD_MARIA_PSP()) {
+        MarHudInit();
+        return;
+    }
+#endif
     D_801397FC = 0;
     D_80139008 = 0;
     g_PlayerHud.unk28 = 0;
@@ -627,8 +699,13 @@ void DrawRichterHud(void) {
     g_PlayerHud.unk1C = g_PlayerHud.unk20 =
         g_PlayerHud.unk0C * 100 / g_PlayerHud.unk10;
     g_PlayerHud.unk24 = 0;
+#if defined(MOD_SATURN_MARIA) && !defined(VERSION_PSP)
+    g_PlayerHud.primIndex1 = AllocPrimitivesReverse(
+        PRIM_GT4, RIC_HUD_NUM_SPRITES + (MOD_MAR2_HUD() ? 1 : 0));
+#else
     g_PlayerHud.primIndex1 =
         AllocPrimitivesReverse(PRIM_GT4, RIC_HUD_NUM_SPRITES);
+#endif
     prim = &g_PrimBuf[g_PlayerHud.primIndex1];
 
     SetTexturedPrimRect(prim, 2, 22, 32, 96, 0, 0);
@@ -690,13 +767,19 @@ void DrawRichterHud(void) {
     prim = prim->next;
 
     // Extra HUD sprite on PSP! Should identify what this is.
-#ifdef VERSION_PSP
-    SetTexturedPrimRect(prim, 18, 38, 8, 8, 0, 0);
-    prim->tpage = 0x1B;
-    prim->clut = 0x102;
-    prim->priority = 0x1F0;
-    prim->drawMode = DRAW_ABSPOS;
-    prim = prim->next;
+    // (Maria's second subweapon icon, func_psp_090E4CD0)
+#if defined(VERSION_PSP) || defined(MOD_SATURN_MARIA)
+#if !defined(VERSION_PSP)
+    if (MOD_MAR2_HUD())
+#endif
+    {
+        SetTexturedPrimRect(prim, 18, 38, 8, 8, 0, 0);
+        prim->tpage = 0x1B;
+        prim->clut = 0x102;
+        prim->priority = 0x1F0;
+        prim->drawMode = DRAW_ABSPOS;
+        prim = prim->next;
+    }
 #endif
 
     SetTexturedPrimRect(prim, 33, 20, 64, 24, 64, 40);
@@ -729,6 +812,10 @@ RicSubwpnIconParams g_ricSubwpnIcons[] = {
     {0x00F, 0x013, 0x008, 0x008, 0x0C0, 0x0D0, 0x01E, 0x163},
     {0x008, 0x00D, 0x018, 0x010, 0x0A8, 0x0D0, 0x01E, 0x17F},
     {0x008, 0x006, 0x018, 0x018, 0x080, 0x0D8, 0x01E, 0x17F}};
+#if defined(MOD_SATURN_MARIA) && !defined(VERSION_PSP)
+// Saturn port: the table the HUD draws the subweapon icon from (dra.h)
+RicSubwpnIconParams* g_ModSubwpnIcons = g_ricSubwpnIcons;
+#endif
 
 #if defined(VERSION_PSP)
 
@@ -892,6 +979,10 @@ Primitive* func_psp_090E4CD0(Primitive* prim) {
 }
 #endif
 
+#if defined(MOD_SATURN_MARIA)
+#include "../../mods/sotn-ultimate/src/maria_saturn/5F60C_mod_maria_hud.h"
+#endif
+
 void DrawRichterHudSubweapon(void) {
     s32 i;
     s32 temp_s4;
@@ -902,6 +993,12 @@ void DrawRichterHudSubweapon(void) {
     RicSubwpnIconParams* ptr;
     s32 temp_subWeapon;
 
+#if defined(MOD_SATURN_MARIA)
+    if (g_PlayableCharacter == PLAYER_MARIA && !MOD_MARIA_PSP()) {
+        MarHudUpdate();
+        return;
+    }
+#endif
     if (D_8003C744 == 5) {
         prim = &g_PrimBuf[g_PlayerHud.primIndex1];
         while (prim != NULL) {
@@ -1099,13 +1196,29 @@ void DrawRichterHudSubweapon(void) {
 
 #else
     // With no Maria, notice that this is just like func_psp_090E4828
+#if defined(MOD_SATURN_MARIA)
+    if (MOD_MAR2_HUD()) {
+        if (g_ModMar2HudIcons) {
+            prim = g_ModMar2HudIcons(prim);
+        } else {
+            prim->drawMode = DRAW_HIDE;
+            prim = prim->next;
+            prim->drawMode = DRAW_HIDE;
+        }
+        goto mod_mar2_hud;
+    }
+#endif
     temp_subWeapon = g_Status.subWeapon;
     if (temp_subWeapon == 0) {
         prim->drawMode = DRAW_HIDE;
     } else {
         // Change from "0 is no subweapon" to "0 is first subweapon"
         temp_subWeapon--;
+#if defined(MOD_SATURN_MARIA)
+        ptr = &g_ModSubwpnIcons[temp_subWeapon];
+#else
         ptr = &g_ricSubwpnIcons[temp_subWeapon];
+#endif
         SetTexturedPrimRect(
             prim, ptr->x + 2, ptr->y + 22, ptr->w, ptr->h, ptr->u, ptr->v);
         prim->tpage = ptr->tpage;
@@ -1118,6 +1231,9 @@ void DrawRichterHudSubweapon(void) {
 
 #endif
 
+#if defined(MOD_SATURN_MARIA) && !defined(VERSION_PSP)
+mod_mar2_hud:
+#endif
     prim = prim->next;
 
     if (g_PlayerHud.unk24 == 0) {

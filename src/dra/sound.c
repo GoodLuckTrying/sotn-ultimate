@@ -15,6 +15,12 @@ u8 aPbav_1[] = {
 #include GEN_VERSION(vh_3.h)
 };
 
+#if defined(MOD_SATURN_AUDIO)
+#include "../../mods/sotn-ultimate/src/audio/sound_mod_music.h"
+#else
+#define XA_CONFIG(i) g_XaMusicConfigs[i]
+#endif
+
 // files included as headers as data should not be aligned by 4
 #if !defined(VERSION_PC)
 __asm__(".pushsection .data\n"
@@ -72,14 +78,20 @@ void UnMuteCd(void) {
     D_8013B694++;
 }
 
+#if defined(MOD_SATURN_AUDIO)
+#include "../../mods/sotn-ultimate/src/audio/sound_mod_pause_cd.h"
+#endif
+
 s32 func_80131F28(void) { return D_80138F7C; }
 
+#if !defined(MOD_DRA_STRIP) // no caller in the US build
 u16 func_80131F38(void) {
     if (g_SeqPlayingId == 0) {
         return 0;
     }
     return g_SeqPlayingId | 0x200;
 }
+#endif
 
 // original name : xa_play_ck
 bool func_80131F68(void) {
@@ -92,7 +104,9 @@ bool func_80131F68(void) {
     return ret;
 }
 
+#if !defined(MOD_DRA_STRIP) // no caller in the US build
 s16 GetCdVolume(void) { return g_CdVolume; }
+#endif
 
 void SetReverbDepth(short depth) { SsUtSetReverbDepth(depth, depth); }
 
@@ -110,6 +124,9 @@ void func_80131FCC(void) {
 }
 
 u8 DoCdCommand(u_char com, u_char* param, u_char* result) {
+#if defined(MOD_DRA_STRIP) // g_CdCommandStatus: read only here (now a local)
+    s32 g_CdCommandStatus;
+#endif
     g_CdCommandStatus = CdSync(CdlNop, g_CdCommandResult);
 
     if (com == CdlGetlocL) {
@@ -164,7 +181,9 @@ void InitSoundVars2(void) {
     s32 i;
 
     InitSoundVars3();
+#if !defined(MOD_DRA_STRIP) // D_8013B690: written, never read
     D_8013B690 = 0;
+#endif
 
     for (i = 0; i < NUM_CH_2; i++) {
         g_CurrentSfxId12_19[i] = 0;
@@ -205,22 +224,32 @@ void InitSoundVars1(void) {
     g_CurSfxDistance22_23 = 0;
     g_CurSfxVol20_21 = 0;
     g_CurSfxDistance20_21 = 0;
+#if !defined(MOD_DRA_STRIP) // written here only, never read
     D_80139A74 = 0;
     D_8013B69C = 0;
+#endif
     g_SeqAccessNum = 0;
+#if !defined(MOD_DRA_STRIP)
     D_80138FBC = 0;
+#endif
     g_PlayingXaBgmId = 0;
+#if !defined(MOD_DRA_STRIP)
     D_80139800 = 0;
     D_80138F80 = 0;
+#endif
     D_80139014 = 0;
+#if !defined(MOD_DRA_STRIP)
     D_8013B618 = 0;
+#endif
     D_8013980C = 0;
     g_CdSoundCommandStep = 0;
     D_801390A0 = 0;
     g_XaVolumeMultiplier = 0x20;
     g_SfxVolumeMultiplier = 0x7F;
+#if !defined(MOD_DRA_STRIP) // g_SeqVolume1 / 2: written, never read elsewhere
     g_SeqVolume1 = 0x70;
     g_SeqVolume2 = 0x70;
+#endif
     D_8013B680 = 0;
     D_80138F7C = 0;
     D_801390D8 = 0;
@@ -455,7 +484,7 @@ void CdSoundCommand4(void) {
 #endif
             g_CdSoundCommand16 = 0;
         }
-        g_XaMusicVolume = g_XaMusicConfigs[g_CurrentXaConfigId].volume;
+        g_XaMusicVolume = XA_CONFIG(g_CurrentXaConfigId).volume;
         g_CdVolume = g_XaMusicVolume;
         SetCdVolume(0, g_CdVolume, g_CdVolume);
         g_CdParam[0] = CdlModeSpeed | CdlModeRT | CdlModeSF;
@@ -468,9 +497,8 @@ void CdSoundCommand4(void) {
         break;
 
     case 2:
-        g_CdParam[0] = g_XaMusicConfigs[g_CurrentXaConfigId].filter_file;
-        g_CdParam[1] =
-            g_XaMusicConfigs[g_CurrentXaConfigId].filter_channel_id % 16;
+        g_CdParam[0] = XA_CONFIG(g_CurrentXaConfigId).filter_file;
+        g_CdParam[1] = XA_CONFIG(g_CurrentXaConfigId).filter_channel_id % 16;
         g_CdSoundCommandStep++;
         /* fallthrough */
     case 3:
@@ -480,13 +508,13 @@ void CdSoundCommand4(void) {
         break;
 
     case 4:
-        address = g_XaMusicConfigs[g_CurrentXaConfigId].filter_channel_id +
-                  g_XaMusicConfigs[g_CurrentXaConfigId].cd_addr + 150;
-        D_80139014 = g_XaMusicConfigs[g_CurrentXaConfigId].unk230;
+        address = XA_CONFIG(g_CurrentXaConfigId).filter_channel_id +
+                  XA_CONFIG(g_CurrentXaConfigId).cd_addr + 150;
+        D_80139014 = XA_CONFIG(g_CurrentXaConfigId).unk230;
         if (D_80139014 == 2) {
-            D_8013AE90 = g_XaMusicConfigs[g_CurrentXaConfigId].unk228 + 20;
+            D_8013AE90 = XA_CONFIG(g_CurrentXaConfigId).unk228 + 20;
         } else {
-            D_8013AE90 = g_XaMusicConfigs[g_CurrentXaConfigId].unk228;
+            D_8013AE90 = XA_CONFIG(g_CurrentXaConfigId).unk228;
         }
         address += g_CurCdPos;
         MakeCdLoc(address, &D_8013B640);
@@ -536,8 +564,8 @@ void CdSoundCommand6(void) {
     case 0:
         D_801390A0 = 1;
         D_8013845C = g_QueuedXaBgmId;
-        cd_pos = g_XaMusicConfigs[g_QueuedXaBgmId + 1].filter_channel_id +
-                 g_XaMusicConfigs[g_QueuedXaBgmId + 1].cd_addr;
+        cd_pos = XA_CONFIG(g_QueuedXaBgmId + 1).filter_channel_id +
+                 XA_CONFIG(g_QueuedXaBgmId + 1).cd_addr;
         cd_pos += CD_PREGAP_BLOCKS + g_CurCdPos;
         MakeCdLoc(cd_pos, &D_8013B640);
         g_CdSoundCommandStep++;
@@ -564,7 +592,7 @@ void CdSoundCommand6(void) {
 
     case 4:
         D_8013AEF4 = VSync(-1);
-        D_8013AE90 = g_XaMusicConfigs[D_8013845C + 1].unk228;
+        D_8013AE90 = XA_CONFIG(D_8013845C + 1).unk228;
         SetReverbDepth(g_ReverbDepth);
         g_PlayingXaBgmId = D_8013845C;
         D_801390A0 = g_CdSoundCommandStep = 0;
@@ -687,9 +715,14 @@ void PlaySeq(s16 arg0) {
         SsSeqOpen(g_SeqPointers[index], g_SeqInfo[index].unk2 >> 4);
     g_ReverbDepth = g_SeqInfo[index].reverb_depth;
     SetReverbDepth(g_ReverbDepth);
+#if !defined(MOD_DRA_STRIP)
     g_SeqVolume1 = g_SeqInfo[index].volume;
     g_SeqVolume2 = g_SeqInfo[index].volume;
     SsSeqSetVol(g_SeqAccessNum, g_SeqVolume1, g_SeqVolume1);
+#else
+    SsSeqSetVol(
+        g_SeqAccessNum, g_SeqInfo[index].volume, g_SeqInfo[index].volume);
+#endif
     if ((g_SeqInfo[index].unk2 & 0xF) == 0) {
         SsSeqPlay(g_SeqAccessNum, 1, 1);
     } else {
@@ -796,7 +829,7 @@ void CdSoundStartXaPlayback(void) {
             D_8013B688[i] = D_8013B5F4[g_CdSoundCommand16 - 1].cdLoc[i];
         }
         g_PlayingXaBgmId = D_8013B5F4[g_CdSoundCommand16 - 1].unkc;
-        g_XaMusicVolume = g_XaMusicConfigs[g_PlayingXaBgmId].volume;
+        g_XaMusicVolume = XA_CONFIG(g_PlayingXaBgmId).volume;
         g_CdVolume = 0;
         SetCdVolume(0, 0, 0);
         g_CdParam[0] = CdlModeSF | CdlModeRT | CdlModeSpeed; // XA playback
@@ -805,9 +838,8 @@ void CdSoundStartXaPlayback(void) {
 
     case 1:
         if (DoCdCommand(CdlSetmode, g_CdParam, NULL) == 0) {
-            g_CdParam[0] = g_XaMusicConfigs[g_PlayingXaBgmId].filter_file;
-            g_CdParam[1] =
-                g_XaMusicConfigs[g_PlayingXaBgmId].filter_channel_id & 0xF;
+            g_CdParam[0] = XA_CONFIG(g_PlayingXaBgmId).filter_file;
+            g_CdParam[1] = XA_CONFIG(g_PlayingXaBgmId).filter_channel_id & 0xF;
             g_CdSoundCommandStep++;
         }
         break;
@@ -883,12 +915,28 @@ void func_80133FCC(void) {
     if (D_801390A0 != 0) {
         return;
     }
+#ifdef MOD_SATURN
+    // Saturn port: not while a file loads (UpdateCd): the end's CdlPause
+    // (CdFadeOut2) or loop's Setloc + ReadN (CdSoundCommand6) would take
+    // the drive from the read, which then never ends. The PSP / JP dubs'
+    // voices can outlast the scene timed for the PS1 ones; the stream was
+    // stopped by the load anyway, and ends once it is done
+    if (g_CdStep != CdStep_None) {
+        return;
+    }
+#endif
 
+#if !defined(MOD_DRA_STRIP)
     D_8013B65C = VSync(-1) - D_8013AEF4;
 
     if (D_8013AE90 >= D_8013B65C) {
         return;
     }
+#else // D_8013B65C: read only here
+    if (D_8013AE90 >= VSync(-1) - D_8013AEF4) {
+        return;
+    }
+#endif
 
     switch (D_80139014) {
     case 2:
@@ -896,9 +944,9 @@ void func_80133FCC(void) {
         break;
     case 1:
         g_QueuedXaBgmId = g_PlayingXaBgmId;
-        D_80139014 = g_XaMusicConfigs[g_QueuedXaBgmId + 1].unk230;
+        D_80139014 = XA_CONFIG(g_QueuedXaBgmId + 1).unk230;
         D_8013AEF4 = VSync(-1);
-        D_8013AE90 = g_XaMusicConfigs[g_QueuedXaBgmId + 1].unk228;
+        D_8013AE90 = XA_CONFIG(g_QueuedXaBgmId + 1).unk228;
         break;
     case 0:
         g_QueuedXaBgmId = g_PlayingXaBgmId;
@@ -1176,7 +1224,9 @@ void PauseSfxScripts(void) {
         g_CurrentSfxScriptSfxId2[i] = 0;
         g_SfxScriptUnk6[i] = 0;
     }
+#if !defined(MOD_DRA_STRIP)
     D_8013B690 = 1;
+#endif
 }
 
 void UnpauseSfxScripts(void) {
@@ -1198,7 +1248,9 @@ void UnpauseSfxScripts(void) {
         RestoreSfxScriptData(3, 3);
         g_CurrentSfxScriptSfxIdCopy[3] = 0;
     }
+#if !defined(MOD_DRA_STRIP)
     D_8013B690 = 0;
+#endif
 }
 
 void KeyOnChannels20_21(void) {
@@ -1258,6 +1310,8 @@ void ExecSoundCommands(void) {
         if (id > 0x300 && id < 0x531) {
 #elif defined(VERSION_PSP)
         if (id > 0x300 && id < 0x532) {
+#elif defined(MOD_SATURN)
+        if (id > 0x300 && id < 0x300 + MOD_XA_RETAIL_CONFIGS + MOD_XA_CONFIGS) {
 #else
         if (id > 0x300 && id < 0x533) {
 #endif

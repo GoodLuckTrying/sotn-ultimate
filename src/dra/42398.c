@@ -27,7 +27,13 @@ static s32 D_801362D4;
 static s32 g_DebugIsRecordingVideo;
 static GpuUsage g_GpuMaxUsage;
 static s32 g_DebugWaitInfoTimer;
+#if defined(MOD_GODSPEED)
+// Saturn port: takes over the dropped video recorder's slot so DRA's BSS
+// keeps its retail size
+s32 g_GodspeedTapTimer;
+#else
 static s32 g_DebugRecordVideoFid;
+#endif
 static s16 D_80136308[128];
 #if defined(VERSION_US)
 static s32 g_softResetTimer;
@@ -36,6 +42,13 @@ static s32 g_softResetTimer;
 void VSyncHandler(void);
 void SsVabClose(short vab_id);
 
+#if defined(MOD_DRA_STRIP)
+// Saturn port: on US these only show a message and wait for a key when a
+// compressed graphics bank overflows (4AEA4.c, a data error that never
+// happens) and in the HD/PC capture tools; g_api.DebugInputWait has no
+// user in any overlay. Dropped for room (MOD_DRA_PAD): returns at once
+void DebugInputWait(const char* msg) {}
+#else
 void DebugShowWaitInfo(const char* msg) {
     g_CurrentBuffer = g_CurrentBuffer->next;
     FntPrint(msg);
@@ -57,7 +70,12 @@ void DebugInputWait(const char* msg) {
     while (!PadRead(0))
         DebugShowWaitInfo(msg);
 }
+#endif
 
+// Saturn port: these dev-kit capture tools are only called on HD/PC, so the
+// mod drops them on US to make room for its own code without moving DRA's
+// BSS (see g_ModDraPad below).
+#if !defined(MOD_DRA_STRIP)
 void DebugCaptureScreen(void) {
     const int BmpHeaderLen = 0x36;
     const int MaxScreenshotCount = 1000;
@@ -238,7 +256,21 @@ void DebugCaptureVideo(void) {
         }
     }
 }
+#else
+// main.exe and the sound banks right after DRA's BSS use fixed addresses, so
+// the mod keeps dra_BSS_START at its retail 0x801362AC: this pad makes up
+// the difference between the bytes the mod adds and the bytes it drops.
+// mods/sotn-ultimate/tools/check_dra_layout.sh prints the value to use after a
+// build.
+#define MOD_DRA_PAD 4
+const u8 g_ModDraPad[MOD_DRA_PAD] = {1};
+#endif
 
+// Saturn port: the palette viewer and its colour editor below, and the GPU
+// and HBlank readouts further down, are only called from the HD/PC parts of
+// DebugUpdate and MainGame. The mod drops them on US to make room (see
+// g_ModDraPad and MOD_DATA_PAD).
+#if !defined(MOD_SATURN)
 const char* D_800A0144[] = {
     "normal", "dark", "light", "reverse", "pale",
 };
@@ -362,6 +394,7 @@ void DebugEditColorChannel(s32 colorAdd) {
         break;
     }
 }
+#endif
 
 s32 DebugUpdate(void) {
 #if defined(VERSION_HD) || defined(VERSION_PC)
@@ -555,6 +588,7 @@ s32 DebugUpdate(void) {
 #endif
 }
 
+#if !defined(MOD_SATURN)
 void PrintGpuInfo(void) {
     if (!g_DebugEnabled)
         return;
@@ -618,6 +652,7 @@ void PrintHBlankInfo(void) {
         D_801362D0 = D_801362D4;
     }
 }
+#endif
 
 #define LOAD_VAB(vab_id, name, addr, data, dataLen)                            \
     SsVabClose(vab_id);                                                        \
@@ -703,6 +738,7 @@ void SetMenuDisplayBuffer(void) {
     func_800E34DC(1);
 }
 
+#if !defined(MOD_DRA_STRIP) // no caller anywhere (static, never referenced)
 static void SetTitleDisplayBuffer(void) {
     SetDefDrawEnv(&g_GpuBuffers[0].draw, 0, 0, DISP_TITLE_W, DISP_TITLE_H);
     SetDefDrawEnv(&g_GpuBuffers[1].draw, 0, 256, DISP_TITLE_W, DISP_TITLE_H);
@@ -718,6 +754,7 @@ static void SetTitleDisplayBuffer(void) {
     g_GpuBuffers[1].disp.isrgb24 = 0;
     g_GpuBuffers[0].disp.isrgb24 = 0;
 }
+#endif
 
 void func_800E385C(OT_TYPE* ot) {
     s32 i;
@@ -743,6 +780,7 @@ void func_800E385C(OT_TYPE* ot) {
 u32 D_800A0158 = 0;
 s32 D_800A015C = 0;
 
+#if !defined(MOD_DRA_STRIP) // no caller in the US build
 void func_800E38CC(void) {
     if (D_800A015C != 0) {
         if (D_800A0158 >= 0x24) {
@@ -756,6 +794,7 @@ void func_800E38CC(void) {
         }
     }
 }
+#endif
 
 #if defined(VERSION_PC)
 #define IS_QUIT_REQUESTED                                                      \
@@ -797,7 +836,11 @@ void MainGame(void) {
     g_MapCursorTimer = 0;
     D_800987B4 = 0;
     g_Settings.D_8003CB00 = 0;
+#if defined(MOD_SKIP_ANY_CUTSCENE)
+    g_Settings.D_8003CB04 = MOD_ALL_SCENES_SEEN;
+#else
     g_Settings.D_8003CB04 = 0;
+#endif
     g_CurrentBuffer = &g_GpuBuffers[0];
 #if defined(VERSION_US)
     SetCdPos(OFF_SD_XA_STR1);
@@ -816,6 +859,7 @@ void MainGame(void) {
     SetDispMask(1);
     SetGameState(Game_Init);
 
+#if !defined(MOD_DRA_STRIP) // only PrintGpuInfo (HD) reads the peaks
     g_GpuMaxUsage.drawModes = 0;
     g_GpuMaxUsage.gt4 = 0;
     g_GpuMaxUsage.g4 = 0;
@@ -825,6 +869,7 @@ void MainGame(void) {
     g_GpuMaxUsage.tile = 0;
     g_GpuMaxUsage.sp = 0;
     g_GpuMaxUsage.env = 0;
+#endif
 #if defined(VERSION_US)
     g_DebugPlayer = 0;
 #elif defined(VERSION_HD)
@@ -841,9 +886,12 @@ loop_5:
     DestroyEntitiesFromIndex(0);
     func_800EA538(0);
     ResetPendingGfxLoad();
+#if !defined(MOD_DRA_STRIP) // only the HD / PC debug menus read these
     D_801362B4 = 0x20;
     g_DebugCurPal = 0x200;
+#endif
     g_DebugEnabled = 0;
+#if !defined(MOD_DRA_STRIP)
     g_DebugHitboxViewMode = 0;
     D_801362B8 = 0;
     D_801362BC = 0;
@@ -853,6 +901,7 @@ loop_5:
     g_DebugColorChannel = DEBUG_COLOR_CHANNEL_RED;
     D_801362C8 = 0;
     g_DebugIsRecordingVideo = false;
+#endif
     g_DemoMode = Demo_None;
     g_CutsceneHasControl = 0;
     D_800973EC = 0;
@@ -889,11 +938,14 @@ loop_5:
         if (D_8003C0EC[3] == 0 && D_800973EC == 0) {
             RenderTilemap();
             RenderEntities();
+#if !defined(MOD_DRA_STRIP)
+            // dead on US: only HD's DebugUpdate sets g_DebugHitboxViewMode
             if (g_GameState == Game_Play && g_DebugEnabled) {
                 if (g_DebugHitboxViewMode != 0) {
                     DrawEntitiesHitbox(g_DebugHitboxViewMode);
                 }
             }
+#endif
         }
         RenderPrimitives();
         UpdateCd();
@@ -952,6 +1004,8 @@ loop_5:
             MuteSound();
         }
 
+#if !defined(MOD_DRA_STRIP)
+        // only PrintGpuInfo (HD) reads these peaks
         if (g_GpuMaxUsage.drawModes < g_GpuUsage.drawModes) {
             g_GpuMaxUsage.drawModes = g_GpuUsage.drawModes;
         }
@@ -979,6 +1033,7 @@ loop_5:
         if (g_GpuMaxUsage.env < g_GpuUsage.env) {
             g_GpuMaxUsage.env = g_GpuUsage.env;
         }
+#endif
 
         // Update game timer
         D_801362D4 = (D_801362D4 + 0xFF) >> 8;
@@ -1004,7 +1059,7 @@ loop_5:
             }
         }
         rand();
-#if defined(VERSION_HD)
+#if defined(VERSION_HD) || defined(MOD_ULTIMATE_DEBUG)
         FntFlush(-1);
 #endif
     }

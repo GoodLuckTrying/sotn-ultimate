@@ -25,6 +25,9 @@ void DestroyEntitiesFromIndex(s16 startIndex) {
         DestroyEntity(pItem);
 }
 
+// Saturn port: the hitbox overlay is only drawn when HD's DebugUpdate sets
+// g_DebugHitboxViewMode (always 0 on US); dropped for room
+#if !defined(MOD_DRA_STRIP)
 void DrawEntitiesHitbox(s32 drawMode) {
     s32 polyCount;
     Entity* entity;
@@ -123,6 +126,7 @@ void DrawEntitiesHitbox(s32 drawMode) {
         g_GpuUsage.drawModes++;
     }
 }
+#endif
 
 #ifndef VERSION_PC
 
@@ -563,11 +567,13 @@ void func_801072BC(Primitive* prim) { func_80107250(prim, 0); }
 
 void func_801072DC(Primitive* prim) { func_80107250(prim, 0x80); }
 
+#if !defined(MOD_DRA_STRIP) // no caller anywhere
 void func_801072FC(POLY_G4* poly) {
     setRGB0(poly, 0, 0, 0);
     setRGB1(poly, 0, 0, 0);
     setRGB2(poly, 0, 0, 0);
     setRGB3(poly, 0, 0, 0);
 }
+#endif
 
 #include "../set_prim_rect.h"

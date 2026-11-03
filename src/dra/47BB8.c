@@ -4,6 +4,11 @@
 
 s32 g_SimVabId = 0;
 
+// Saturn port: the dev-kit ("sim:") file loader below only runs when DRA
+// itself was loaded from a PC (main.c sets g_UseDisk = 0); a disc boot
+// never takes it. The mod drops it on US to make room in DRA (see
+// g_ModDraPad and MOD_DATA_PAD).
+#if !defined(MOD_SATURN)
 SimFile D_800A024C[] = {
     {
         "sim:c:\\bin\\f_title1.bin",
@@ -253,6 +258,8 @@ SimFile D_800A04AC[] = {
     },
 };
 
+#endif // !MOD_SATURN
+
 u16 D_800A04CC[] = {
     0x0000, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
     0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
@@ -267,10 +274,24 @@ RECT D_800A0500 = {112, 32, 128, 1};
 RECT D_800A0508 = {368, 32, 128, 1};
 
 // BSS
+#if !defined(MOD_SATURN)
 static SimFile* g_SimFile;
 static SimFile D_80136450;
+#else
+// kept (unused) so that DRA's BSS keeps its retail layout
+SimFile* g_SimFile;
+SimFile D_80136450;
+#endif
+#if defined(MOD_SATURN)
+// Saturn port: the VSync line upload below (D_800A04EC) is only started by
+// the sim-file loader (func_800E7D08), which the mod drops, so its two
+// buffers (4 KB) are free: ModXaConfig (sound.c) builds the PSP dub
+// toggle's redirected voice config there
+ModDubState g_ModDub __attribute__((section(".bss")));
+#else
 static s16 D_80136460[VSYNC_UNK_LEN];
 static s16 D_80136C60[VSYNC_UNK_LEN];
+#endif
 
 void VSyncHandler(void) {
     RECT* rect;
@@ -278,6 +299,7 @@ void VSyncHandler(void) {
     D_800A04F4++;
     D_800A04F8 = (D_800A04F4 / 4) % 32;
     nullsub_10();
+#if !defined(MOD_SATURN)
     if (D_800A04F0) {
         return;
     }
@@ -314,8 +336,10 @@ void VSyncHandler(void) {
         break;
     }
     D_800A04F0 = 0;
+#endif
 }
 
+#if !defined(MOD_SATURN)
 void func_800E7D08(void) {
     s32 i;
 
@@ -326,7 +350,9 @@ void func_800E7D08(void) {
 
     D_800A04EC = 1;
 }
+#endif
 
+#if !defined(MOD_DRA_STRIP) // only the dropped sim loader called it
 void LoadStageTileset(u8* pTilesetData, s32 y) {
     RECT rect;
     s32 i;
@@ -347,7 +373,9 @@ void LoadStageTileset(u8* pTilesetData, s32 y) {
         }
     }
 }
+#endif
 
+#if !defined(MOD_SATURN)
 // Equivalent of CdStep_6 with their g_CdCallback but for the sim device
 s32 LoadFileSimToMem(SimKind kind) {
     char pad[0x20];
@@ -624,3 +652,6 @@ s32 LoadFileSim(s32 fileId, SimFileType type) {
     D_800A04EC = 0;
     return 0;
 }
+#else
+s32 LoadFileSim(s32 fileId, SimFileType type) { return -1; }
+#endif // !MOD_SATURN

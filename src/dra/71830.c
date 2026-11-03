@@ -10,13 +10,16 @@ void PlayerStepKill(DamageParam* damage, s16 arg_PlayerStep, s16 arg2);
 
 void func_80111928(void) { D_801396EA = 0; }
 
+#if !defined(MOD_DRA_STRIP) // only the dropped debug fly mode called it
 void func_80111938(void) {
     D_801396EA = 1;
     D_801396E4 = PLAYER.animCurFrame;
     D_801396E6 = PLAYER.drawFlags;
     D_801396E8 = PLAYER.palette;
 }
+#endif
 
+#if !defined(MOD_DRA_STRIP) // only the dropped debug fly mode called it
 void func_8011197C(void) {
     D_801396EA = 0;
     PLAYER.animCurFrame = D_801396E4;
@@ -24,10 +27,12 @@ void func_8011197C(void) {
     PLAYER.palette = D_801396E8;
     PLAYER.hitParams = 0;
 }
+#endif
 
 #ifndef VERSION_HD
 extern s32 D_80137FDC;
 #endif
+#if !defined(MOD_DRA_STRIP) // debug fly mode: g_DebugPlayer is always 0 on US
 int func_801119C4(void) {
     if (!D_801396EA) {
         if (g_Player.padTapped & PAD_L2) {
@@ -103,6 +108,7 @@ int func_801119C4(void) {
     FntPrint("charal:%02x\n", PLAYER.animCurFrame);
     return true;
 }
+#endif
 
 void func_80111CC0(void) {
     if (g_Player.timers[1]) {
@@ -255,9 +261,21 @@ void PlayerStepStand(void) {
         }
         DecelerateX(FIX(0.0625));
     } else {
+#if defined(MOD_SATURN)
+        // Saturn port (func_060A81DC): Alucard spear's dash special (step_s
+        // 0x60) takes the 0x57 checks up to pose 15, but the normal braking
+        if (PLAYER.step_s == 0x60 && PLAYER.pose < 16) {
+            if (func_8010FDF8(0x43018) != 0) {
+                return;
+            }
+        } else if (func_8010FDF8(0x4301C) != 0) {
+            return;
+        }
+#else
         if (func_8010FDF8(0x4301C) != 0) {
             return;
         }
+#endif
         DecelerateX(FIX(0.125));
     }
 
@@ -432,6 +450,10 @@ void PlayerStepStand(void) {
         break;
     case 0x57:
     case 0x5B:
+#if defined(MOD_SATURN)
+    // Saturn port: Alucard spear's dash special (attack kind 32)
+    case 0x60:
+#endif
         func_8010DFF0(1, 1);
         local_flags = 0;
         if ((PLAYER.pose < (g_Player.unk54 - 6)) &&
@@ -445,6 +467,20 @@ void PlayerStepStand(void) {
         if (PLAYER.poseTimer < 0) {
             local_flags = 0xF;
         }
+#if defined(MOD_SATURN)
+        // Saturn: the spear's longer windup leaves the ground at pose 15
+        // (it runs off a ledge) instead of pose 4, timer 1
+        if (PLAYER.step_s == 0x60) {
+            if (PLAYER.pose == 15 && !(g_Player.vram_flag & TOUCHING_GROUND)) {
+                PLAYER.pose = 5;
+                PLAYER.poseTimer = 1;
+                PLAYER.ext.player.anim = 0x6C;
+                PLAYER.step = 4;
+                g_Player.unk44 = 1;
+            }
+            break;
+        }
+#endif
         if (PLAYER.pose == 4 && PLAYER.poseTimer == 1 &&
             !(g_Player.vram_flag & TOUCHING_GROUND)) {
             PLAYER.pose = 5;
@@ -493,6 +529,32 @@ void PlayerStepStand(void) {
         }
         local_flags = 0;
         break;
+#if defined(MOD_SATURN)
+    case 0x61:
+        // Saturn port (0x060A8A20): Alucard spear's QCF special (attack kind
+        // 33). Like 0x5A: hold the thrust (pose 4 of the two-handed swing)
+        // while D_80139824 (40) runs, then end as the swing (0x46) at pose 7
+        // or when Down/Up is tapped or Alucard is turned around
+        func_8010DFF0(1, 1);
+        if (D_80139824 > 0) {
+            D_80139824--;
+        }
+        if (PLAYER.pose == 4 && PLAYER.poseTimer == 1 && D_80139824) {
+            PLAYER.poseTimer = 2;
+        }
+        if (PLAYER.pose == 7) {
+            PLAYER.step_s = 0x46;
+        }
+        if (g_Player.padTapped & (PAD_DOWN | PAD_UP)) {
+            PLAYER.step_s = 0x46;
+        }
+        if ((PLAYER.facingLeft && (g_Player.padPressed & PAD_RIGHT)) ||
+            (!PLAYER.facingLeft && (g_Player.padPressed & PAD_LEFT))) {
+            PLAYER.step_s = 0x46;
+        }
+        local_flags = 0;
+        break;
+#endif
     case 0x45:
     case 0x51:
         func_8010DFF0(1, 1);
@@ -556,6 +618,10 @@ void PlayerStepWalk(void) {
     }
 }
 
+#if defined(MOD_GODSPEED)
+#include "../../mods/sotn-ultimate/src/godspeed/71830_mod_godspeed.h"
+#endif
+
 s16 D_800ACF7C[] = {
     1,
     31,
@@ -600,13 +666,28 @@ void PlayerStepJump(void) {
                 (PLAYER.ext.player.anim == 0x19)) {
                 SetPlayerAnim(0x18);
             }
+#if defined(MOD_GODSPEED)
+            // Saturn func_060A972C: keep sprint speed in mid-air
+            if (g_Player.unk44 & GODSPEED_JUMP_FLAG) {
+                SetSpeedX(GODSPEED_SPEED);
+            } else {
+                SetSpeedX(FIX(1.5));
+            }
+#else
             SetSpeedX(FIX(1.5));
+#endif
         } else if ((PLAYER.ext.player.anim == 0x1A) ||
                    (PLAYER.ext.player.anim == 0x18)) {
             SetPlayerAnim(0x19);
         }
         if (walkResult <= 0) {
+#if defined(MOD_GODSPEED)
+            // Saturn func_060A972C (mask 0xFDEF): turning or letting go
+            // in the air also ends the sprint jump's speed
+            g_Player.unk44 &= ~(0x10 | GODSPEED_JUMP_FLAG);
+#else
             g_Player.unk44 &= ~0x10;
+#endif
         }
         if (PLAYER.velocityY > 0) {
             if (PLAYER.ext.player.anim != 0x1B) {
@@ -618,10 +699,24 @@ void PlayerStepJump(void) {
     case 0x1:
         walkResult = CheckMoveDirection();
         if (walkResult != 0) {
+#if defined(MOD_GODSPEED)
+            if (g_Player.unk44 & GODSPEED_JUMP_FLAG) {
+                SetSpeedX(GODSPEED_SPEED);
+            } else {
+                SetSpeedX(FIX(1.5));
+            }
+#else
             SetSpeedX(FIX(1.5));
+#endif
         }
         if (walkResult <= 0) {
+#if defined(MOD_GODSPEED)
+            // Saturn func_060A972C (mask 0xFDEF): turning or letting go
+            // in the air also ends the sprint jump's speed
+            g_Player.unk44 &= ~(0x10 | GODSPEED_JUMP_FLAG);
+#else
             g_Player.unk44 &= ~0x10;
+#endif
         }
         break;
     case 0x58:
@@ -639,8 +734,19 @@ void PlayerStepJump(void) {
         break;
     case 0x57:
     case 0x5B:
+#if defined(MOD_SATURN)
+    // Saturn port (func_060A972C): Alucard spear's dash special
+    case 0x60:
+        func_8010DFF0(1, 1);
+        if (PLAYER.step_s == 0x60) {
+            DecelerateX(FIX(1.0 / 8));
+        } else {
+            DecelerateX(FIX(1.0 / 16));
+        }
+#else
         func_8010DFF0(1, 1);
         DecelerateX(FIX(1.0 / 16));
+#endif
         if (PLAYER.ext.player.anim == 0x6C) {
             if (PLAYER.poseTimer < 0) {
                 if (PLAYER.velocityY > FIX(1)) {
@@ -655,6 +761,15 @@ void PlayerStepJump(void) {
                 g_ButtonCombo[COMBO_BF].buttonsCorrect = 0xFE;
                 g_ButtonCombo[COMBO_BF].timer = 0x10;
             }
+#if defined(MOD_SATURN)
+        } else if (PLAYER.step_s == 0x60) {
+            // the spear's longer windup: switch to the fall at pose 15
+            if (PLAYER.pose == 15) {
+                PLAYER.poseTimer = 1;
+                PLAYER.pose = 5;
+                PLAYER.ext.player.anim = 0x6C;
+            }
+#endif
         } else if ((PLAYER.pose == 4) && (PLAYER.poseTimer == 1)) {
             PLAYER.pose = 5;
             PLAYER.ext.player.anim = 0x6C;
@@ -684,6 +799,9 @@ void PlayerStepJump(void) {
     case 0x56:
     case 0x5A:
     case 0x5C:
+#if defined(MOD_SATURN)
+    case 0x61: // Saturn port: Alucard spear's QCF special
+#endif
         func_8010DFF0(1, 1);
     case 0x59:
     case 0x40:
@@ -945,6 +1063,11 @@ void PlayerStepCrouch(void) {
     case 0x5A:
     case 0x5B:
     case 0x5C:
+#if defined(MOD_SATURN)
+    // Saturn port: Alucard spear's specials (D_800B0608 has their entries)
+    case 0x60:
+    case 0x61:
+#endif
         func_8010DFF0(1, 1);
         if (PLAYER.pose < g_Player.unk54) {
             if (PLAYER.pose < 3) {
@@ -2526,7 +2649,12 @@ void ControlBatForm(void) {
             CastSpell(SPELL_WING_SMASH)) {
             LearnSpell(SPELL_WING_SMASH);
             SetPlayerAnim(0xC6);
+#if defined(MOD_SATURN)
+            // Saturn func_060AA23C: wing smash starts at 7.5 px/frame (0x78000)
+            SetSpeedX(FIX(7.5));
+#else
             SetSpeedX(FIX(6));
+#endif
             PLAYER.step_s = 3;
             CreateEntFactoryFromEntity(
                 g_CurrentEntity, FACTORY(BP_BLINK_WHITE, 0x5c), 0);
@@ -2763,7 +2891,14 @@ void ControlBatForm(void) {
             break;
         }
         // When wing smash ends, force an un-transform
+#if defined(MOD_SATURN)
+        // Saturn func_060AA23C sets the 0x40 timer but never reads it: the
+        // smash lasts until a wall, R1/another form, or the normal bat MP
+        // drain (1 MP / 60 frames, BatFormFinished) runs out.
+        if (0) {
+#else
         if (--g_WingSmashTimer == 0) {
+#endif
             g_Player.padTapped = PAD_R1;
             BatFormFinished();
             g_Player.demo_timer = 32;

@@ -1537,7 +1537,11 @@ void GetServantStats(
     Entity* servant, s32 spellId, s32 fetchSpell, FamiliarStats* out) {
     SpellDef spell;
 
+#if defined(MOD_SATURN)
+    ModGetFamiliarStats(g_Servant - 1, out);
+#else
     *out = g_Status.statsFamiliars[g_Servant - 1];
+#endif
     if (fetchSpell) {
         GetSpellDef(&spell, spellId);
         servant->attack = spell.attack;
@@ -1619,10 +1623,14 @@ PfnEntityUpdate g_DraEntityTbl[] = {
     func_80129864,
     EntityNull,
     EntitySummonSpirit,
-    func_80123F78,
+    func_80123F78, // time-stop dim (Saturn balance: 692E8.c never spawns it)
     EntityTeleport,
     EntityPlayerSleepZ,
-    EntityNull};
+    EntityNull,
+#if defined(MOD_SATURN)
+    EntityModHolderFood, // MOD_E_HOLDER_FOOD: the third hand's food
+#endif
+};
 
 extern AnimationFrame* D_psp_09234DC8;
 // Corresponding RIC function is RicUpdatePlayerEntities
@@ -1841,8 +1849,27 @@ Entity* CreateEntFactoryFromEntity(
 
 static FactoryBlueprint blueprints[] = {
 #include GEN_VERSION(blueprints.h)
+#if defined(MOD_SATURN)
+    // Saturn port: the Saturn's blueprints 123-127 (ALUCARD.PRG 0x060CCB78).
+    // 123-126 spawn Saturn-only entities (68-71) nothing on the PS1 asks
+    // for: dummies that spawn nothing.
+    B_MAKE(E_NONE, 1, 1, true, false, 0, B_KIND_0, B_ORIGIN_DEFAULT, 0),
+    B_MAKE(E_NONE, 1, 1, true, false, 0, B_KIND_0, B_ORIGIN_DEFAULT, 0),
+    B_MAKE(E_NONE, 1, 1, true, false, 0, B_KIND_0, B_ORIGIN_DEFAULT, 0),
+    B_MAKE(E_NONE, 1, 1, true, false, 0, B_KIND_0, B_ORIGIN_DEFAULT, 0),
+    // 127 (Saturn 03 01 81 01 00 00): Alucard spear's sparks. Entity 3 is
+    // relative: the spear spawns it with hand bits (factory 0x107F/0x207F),
+    // so it becomes 0xE3/0xF3, the weapon overlay's func_ptr_8017000C
+    B_MAKE(E_GRAVITY_BOOT_BEAM, 1, 1, true, false, 1, B_KIND_0,
+           B_ORIGIN_DEFAULT, 0),
+#endif
 };
+#if defined(MOD_SATURN)
+STATIC_ASSERT(LEN(blueprints) == MOD_NUM_BLUEPRINTS, "bp array wrong size");
+STATIC_ASSERT(LEN(blueprints) == BP_MOD_SPEAR_SPARK + 1, "spear bp misplaced");
+#else
 STATIC_ASSERT(LEN(blueprints) == NUM_BLUEPRINTS, "bp array wrong size");
+#endif
 
 static u8 entity_ranges[NUM_BLUEPRINT_KIND][2] = {
     {0x20, 0x3F}, // B_KIND_0
@@ -1913,7 +1940,8 @@ void EntityFactory(Entity* self) {
         case B_ORIGIN_4:
             self->posX.val = PLAYER.posX.val;
             self->posY.val = PLAYER.posY.val;
-            if (PLAYER.step != Player_Walk) {
+            // Saturn port: the sprint's dust too (Saturn 060BB19A)
+            if (!IS_WALK_STEP(PLAYER.step)) {
                 self->entityId = 0;
                 return;
             }
@@ -3368,3 +3396,7 @@ void EntityWingSmashTrail(Entity* entity) {
         DestroyEntity(entity);
     }
 }
+
+#if defined(MOD_SATURN_ITEMS)
+#include "../../mods/sotn-ultimate/src/items/mod_holder.h"
+#endif

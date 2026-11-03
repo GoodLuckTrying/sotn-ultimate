@@ -933,7 +933,7 @@ void func_801042C4(s32 arg0) {
     func_80103EAC();
     D_801379B8 = ((s32)(g_StageId & STAGE_INVERTEDCASTLE_FLAG) / 2) + 8;
     D_801379C8.vx = D_801379C8.vy = D_801379C8.vz = 0;
-#if !defined(VERSION_PSP)
+#if !defined(VERSION_PSP) && !defined(MOD_DRA_STRIP) // written, never read
     D_801379C0.vx = D_801379C0.vy = D_801379C0.vz = 0;
 #endif
 
@@ -1412,6 +1412,20 @@ void func_80105428(void) {
 #if defined(VERSION_PSP)
         if (abs(PLAYER.posX.i.hi - 0x80) < 3) {
             PLAYER.posX.i.hi = 0x80;
+        }
+#elif defined(MOD_SATURN_MARIA)
+        // Saturn port: Maria's walk steps past 0x7F-0x80 and she paces
+        // forever; snap the player like the PSP does (every character, as
+        // there). The world position moves along: RunMainEngine only follows
+        // the player's own update, and a stale g_PlayerX makes the room's
+        // left exit fire while posX is still 0, which the next room wraps to
+        // its left edge (in the wall)
+        {
+            s16 dx = 0x80 - PLAYER.posX.i.hi;
+            if ((u16)(dx + 2) < 5) {
+                PLAYER.posX.i.hi += dx;
+                g_PlayerX += dx;
+            }
         }
 #endif
         if (PLAYER.posX.i.hi < 0x7F) {

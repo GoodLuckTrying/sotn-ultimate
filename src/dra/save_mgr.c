@@ -73,4 +73,7 @@ static u8 g_saveIcon15[] = {
 #include "gen/g_saveIcon15.h"
 };
 
+// Saturn port: DRA writes saves (the save rooms, and for SEL through
+// g_ModDub.storeSave) and only loads back its own Library demo snapshot
+#define MOD_SAVE_DRA
 #include "../save_mgr.h"

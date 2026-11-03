@@ -93,8 +93,23 @@ void func_8010E570(s32 arg0) {
     SetPlayerAnim(D_800ACF54[anim]);
 }
 
+#if defined(MOD_GODSPEED)
+#include "../../mods/sotn-ultimate/src/godspeed/6E42C_mod_godspeed.h"
+#endif
+
 void func_8010E6AC(bool forceAnim13) {
     bool atLedge;
+
+#if defined(MOD_GODSPEED)
+    // Saturn func_060A59E0: a second walk start within the tap window
+    // becomes a sprint
+    if (g_GodspeedTapTimer && !g_Player.unk7A &&
+        IsRelicActive(RELIC_GODSPEED_SHOES)) {
+        GodspeedStartSprint();
+        return;
+    }
+    g_GodspeedTapTimer = 12;
+#endif
 
     atLedge = false;
     if (g_Player.vram_flag & IN_AIR_OR_EDGE) {
@@ -135,7 +150,16 @@ void func_8010E7AC(void) {
         SetPlayerAnim(28);
     }
 
+#if defined(MOD_GODSPEED)
+    // Saturn func_060A5AF0: falling out of a sprint keeps its momentum, and
+    // the landing must not turn back into a sprint
+    if (g_Player.prev_step != Player_FlameWhip) {
+        PLAYER.velocityX = 0;
+    }
+    g_GodspeedTapTimer = 0;
+#else
     PLAYER.velocityX = 0;
+#endif
     PLAYER.velocityY = FIX(2);
     g_Player.timers[ALU_T_6] = 8;
 
@@ -155,7 +179,18 @@ void func_8010E83C(bool clearUnk44bit) {
     }
     if (CheckMoveDirection()) {
         SetPlayerAnim(26);
+#if defined(MOD_GODSPEED)
+        // Saturn func_060A5B94: jumping out of a sprint keeps its speed.
+        // The sprint step poses as a walk while it handles input, so check
+        // the step this frame started in.
+        if (g_Player.prev_step == Player_FlameWhip) {
+            SetSpeedX(GODSPEED_SPEED);
+        } else {
+            SetSpeedX(FIX(1.5));
+        }
+#else
         SetSpeedX(FIX(1.5));
+#endif
         g_Player.unk44 = 0;
     } else {
         SetPlayerAnim(22);
@@ -169,6 +204,11 @@ void func_8010E83C(bool clearUnk44bit) {
     if (g_Player.prev_step == Player_Walk) {
         g_Player.unk44 |= 0x10;
     }
+#if defined(MOD_GODSPEED)
+    else if (g_Player.prev_step == Player_FlameWhip) {
+        g_Player.unk44 |= GODSPEED_JUMP_FLAG | 0x10;
+    }
+#endif
 
     if (clearUnk44bit) {
         // clear the bit
@@ -560,6 +600,10 @@ block_45:
         return false;
     }
 
+#if defined(MOD_GODSPEED)
+    // Saturn 060A71C8: an attack ends the double-tap window
+    g_GodspeedTapTimer = 0;
+#endif
     var_s2 = equipped_item->playerAnim;
     switch (equipped_item->unk11) {
     case 29: // Muramasa
@@ -639,6 +683,11 @@ block_45:
         PlaySfx(SFX_VO_ALU_ATTACK_B);
         goto block_98;
     case 23: // Unknown, not a direct equippable item (but there are 4 of them)
+#if defined(MOD_SATURN)
+    // Saturn port: Alucard spear's back-forward special (record 224), a
+    // dash; the Saturn's jump table (0x060A71FC) sends 32 here too
+    case 32:
+#endif
         PLAYER.step = 0;
         CheckMoveDirection();
         SetSpeedX(FIX(5));
@@ -675,6 +724,11 @@ block_45:
         PlaySfx(SFX_VO_ALU_ATTACK_B);
         goto block_98;
     case 26: // Unknown, not a direct equippable item (but there are 2 of them)
+#if defined(MOD_SATURN)
+    // Saturn port: Alucard spear's QCF special (record 225), standing still
+    // (D_80139824 holds pose 4 in step_s 0x61); Saturn sends 33 here too
+    case 33:
+#endif
         PLAYER.step = 0;
         D_80139824 = 40;
         g_CurrentEntity->velocityY = 0;

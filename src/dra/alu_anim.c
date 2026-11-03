@@ -143,11 +143,13 @@ void DrawPlayerAfterImage(void) {
 }
 
 // Unused; deadstripped on PSP
+#if !defined(MOD_DRA_STRIP) // no caller in the US build
 void func_8010DA2C(AnimationFrame* frames) {
     g_CurrentEntity->anim = frames;
     g_CurrentEntity->poseTimer = 0;
     g_CurrentEntity->pose = 0;
 }
+#endif
 
 void SetPlayerAnim(u8 anim) {
     g_CurrentEntity->ext.player.anim = anim;

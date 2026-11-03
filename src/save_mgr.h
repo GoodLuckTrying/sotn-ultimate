@@ -172,10 +172,15 @@ int MemcardDetectSave(s32 nPort, u8* expectedSaveName, s32 block) {
     return isCastlevaniaSave;
 }
 
+#if !defined(                                                                  \
+    MOD_DRA_STRIP) // only MemcardReadFile (dropped in DRA) and SEL use it
 s32 IsMemcardBlockUsed(u32 nPort, u32 block) {
     return g_MemcardInfo[nPort].blocks[block];
 }
+#endif
 
+#if !defined(MOD_DRA_STRIP) // DRA never reads a file (SEL does: no
+                            // MOD_DRA_STRIP there)
 s32 MemcardReadFile(
     s32 nPort, s32 nCard, const char* name, void* data, s32 nBlock) {
     char savePath[32];
@@ -184,7 +189,13 @@ s32 MemcardReadFile(
 
     sprintf(savePath, "bu%1d%1d:%s", nPort, nCard, name);
     if (nBlock == 0) {
+#if defined(MOD_SATURN)
+        // the file list reads up to the status end (ModSaveExtra and the
+        // "SAT4" magic, at 0x554..0x56C): a mod area save names its place
+        nBytes = 0x580;
+#else
         nBytes = 0x2B8;
+#endif
     } else {
         nBytes = nBlock * CARD_BLOCK_SIZE;
     }
@@ -199,6 +210,7 @@ s32 MemcardReadFile(
     read(fd, data, nBytes);
     return 0;
 }
+#endif
 
 s32 MemcardWriteFile(s32 nPort, s32 nCard, const char* name, void* data,
                      s32 flags, bool create) {
@@ -233,12 +245,15 @@ s32 MemcardWriteFile(s32 nPort, s32 nCard, const char* name, void* data,
     return 0;
 }
 
+#if !defined(                                                                  \
+    MOD_DRA_STRIP) // DRA never erases (SEL does: no MOD_DRA_STRIP there)
 s32 MemcardEraseFile(s32 nPort, s32 nCard, const char* name) {
     char savePath[0x20];
 
     sprintf(savePath, "bu%1d%1d:%s", nPort, nCard, name);
     return -(erase(savePath) == 0);
 }
+#endif
 
 s32 MemcardClose(s32 nPort) {
     s32 eventStep = _peek_event();
@@ -502,6 +517,295 @@ const char* g_SaveAreaNames[] = {
     "",
 };
 
+#if defined(MOD_SATURN)
+// Saturn port: saves carry this marker (see include/game.h MOD_SAVE_MAGIC)
+static void ModMarkSave(PlayerStatus* status) {
+    status->modPadding[0] = MOD_SAVE_MAGIC & 0xFF;
+    status->modPadding[1] = (MOD_SAVE_MAGIC >> 8) & 0xFF;
+    status->modPadding[2] = (MOD_SAVE_MAGIC >> 16) & 0xFF;
+    status->modPadding[3] = MOD_SAVE_MAGIC >> 24;
+}
+
+#if !defined(MOD_SAVE_DRA)
+// The equip menu lists body POSITIONS by the category of the item whose id
+// is the position (func_800FAF44), then shows the item stored there: every
+// position must hold an item of its own category (sorting swaps within one
+// list only). Fill dst[0..n) from the order src[0..nSrc) that way, keeping
+// each category's sequence; ids >= n are left out.
+static void ModRegroupBodyOrder(
+    u8* dst, const u8* src, s32 n, s32 nSrc, Accessory* defs) {
+    s32 next[8];
+    s32 p, k, cat;
+
+    for (k = 0; k < LEN(next); k++) {
+        next[k] = 0;
+    }
+    for (p = 0; p < n; p++) {
+        cat = defs[p].equipType & 7;
+        for (k = next[cat]; k < nSrc; k++) {
+            if (src[k] < n && (defs[src[k]].equipType & 7) == cat) {
+                break;
+            }
+        }
+        dst[p] = k < nSrc ? src[k] : p;
+        next[cat] = k + 1;
+    }
+}
+#endif
+
+#if !defined(MOD_SAVE_DRA)
+// (the conversions on load: SEL only; DRA loads back only its own demo
+// snapshot, stored as it is)
+static bool ModHasMagic(PlayerStatus* status, u32 magic) {
+    return status->modPadding[0] == (magic & 0xFF) &&
+           status->modPadding[1] == ((magic >> 8) & 0xFF) &&
+           status->modPadding[2] == ((magic >> 16) & 0xFF) &&
+           status->modPadding[3] == (magic >> 24);
+}
+
+// Rebuild the inventory arrays from a copy of an older status whose arrays
+// have nHand / nBody slots (hand counts, body counts, hand order, body order,
+// right after the relics and spells). Slots the old layout lacks start empty,
+// listed in id order after the old ones.
+static void ModRebuildInventory(
+    PlayerStatus* status, u8* old, s32 nHand, s32 nBody) {
+    u8* handCount = old + NUM_RELICS + NUM_SPELLS;
+    u8* bodyCount = handCount + nHand;
+    u8* handOrder = bodyCount + nBody;
+    u8* bodyOrder = handOrder + nHand;
+    s32 i;
+
+    for (i = 0; i < HAND_ITEMS_CAP; i++) {
+        if (i < nHand) {
+            status->equipHandCount[i] = handCount[i];
+            status->equipHandOrder[i] = handOrder[i];
+        } else {
+            status->equipHandCount[i] = 0;
+            status->equipHandOrder[i] = i;
+        }
+    }
+    for (i = 0; i < BODY_ITEMS_CAP; i++) {
+        if (i < nBody) {
+            status->equipBodyCount[i] = bodyCount[i];
+            status->equipBodyOrder[i] = bodyOrder[i];
+        } else {
+            status->equipBodyCount[i] = 0;
+            status->equipBodyOrder[i] = i;
+        }
+    }
+    // each position back to its own category (also repairs the saves of
+    // the first compatible build, whose order lost it)
+    {
+        u8 tmp[BODY_ITEMS_CAP];
+
+        for (i = 0; i < BODY_ITEMS_CAP; i++) {
+            tmp[i] = status->equipBodyOrder[i];
+        }
+        ModRegroupBodyOrder(status->equipBodyOrder, tmp, BODY_ITEMS_CAP,
+                            BODY_ITEMS_CAP, g_api.accessoryDefs);
+    }
+}
+
+// Saturn port: rebuild a status loaded from a retail-layout save (the unmodded
+// game, downloaded saves, or mod builds before the inventory expansion)
+static void ModConvertRetailStatus(PlayerStatus* status) {
+    PlayerStatusRetail old;
+    u8* src;
+    u8* dst;
+    s32 i;
+    s32 n;
+
+    src = (u8*)status;
+    dst = (u8*)&old;
+    for (i = 0; i < sizeof(old); i++) {
+        dst[i] = src[i];
+    }
+
+    // relics and spells sit before the arrays and did not move
+    ModRebuildInventory(status, (u8*)&old, NUM_HAND_ITEMS, NUM_BODY_ITEMS);
+
+    // saveName up to D_80097C40 has the same layout in both versions
+    src = (u8*)old.saveName;
+    dst = (u8*)status->saveName;
+    n = (u8*)old.statsFamiliars - (u8*)old.saveName;
+    for (i = 0; i < n; i++) {
+        dst[i] = src[i];
+    }
+    for (i = 0; i < FAMILIARS_STORED; i++) {
+        status->statsFamiliars[i] = old.statsFamiliars[i];
+    }
+    ModMarkSave(status);
+}
+
+// Saturn port: "SAT1" saves (mod builds with 92 body slots) differ only in
+// the arrays: 2 alignment bytes padded them to the same saveName offset.
+static void ModConvertSat1Status(PlayerStatus* status) {
+    u8 old[0x240];
+    u8* src;
+    s32 i;
+
+    src = (u8*)status;
+    for (i = 0; i < LEN(old); i++) {
+        old[i] = src[i];
+    }
+    ModRebuildInventory(status, old, HAND_ITEMS_CAP, 92);
+    ModMarkSave(status);
+}
+#endif
+
+// Saturn port: saves are written in the retail layout ("SAT4") so that the
+// unmodded game loads them too (the mod's own items, rooms and choices are
+// then simply missing there). What the retail layout cannot hold goes into
+// the two JP-only familiars' stat slots, which the US game never reads,
+// right before the magic: the counts of the new items, the new items that
+// are equipped (the retail layout gets the slot's empty item instead) and
+// the save room of a mod-only area (the retail one gets the Castle
+// Entrance's save room, or the Reverse Entrance's).
+typedef struct {
+    u8 hand[HAND_ITEMS_CAP - NUM_HAND_ITEMS];
+    u8 body[BODY_ITEMS_CAP - NUM_BODY_ITEMS];
+    u8 equip[7]; // equipment[] / wornEquipment[] as one array; 0: retail
+    u8 stage;    // 0: a retail save room; | 0x80: the cards below are kept
+    u8 roomX;    // | the Sprite card's RELIC_FLAG_* bits << 6
+    u8 roomY;    // | the Nose Devil card's << 6
+} ModSaveExtra;
+// The two JP familiars' cards are cleared from the retail layout: the US
+// game lists those familiars (and the extra bytes above as their stats)
+#define MOD_EXTRA_CARDS 0x80
+typedef char ModSaveExtraCheck[sizeof(ModSaveExtra) <= 24 - 4 ? 1 : -1];
+#define MOD_SAVE_EXTRA(status)                                                 \
+    ((ModSaveExtra*)((u8*)(status) + sizeof(PlayerStatus) - 4 -                \
+                     sizeof(ModSaveExtra)))
+#if defined(MOD_SAVE_DRA)
+static const u8 g_ModEmptySlot[7] = {
+    ITEM_EMPTY_HAND, ITEM_EMPTY_HAND,   ITEM_EMPTY_HEAD,  ITEM_NO_ARMOR,
+    ITEM_NO_CAPE,    ITEM_NO_ACCESSORY, ITEM_NO_ACCESSORY};
+
+static void ModStoreRetailStatus(PlayerStatusRetail* dst) {
+    ModSaveExtra* x = MOD_SAVE_EXTRA(dst);
+    u32* eq = dst->equipment;
+    u8* src;
+    u8* d;
+    s32 i, n;
+
+    // (dst is zeroed by StoreSaveData)
+    for (i = 0; i < NUM_RELICS; i++) {
+        dst->relics[i] = g_Status.relics[i];
+    }
+    for (i = 0; i < NUM_SPELLS; i++) {
+        dst->spells[i] = g_Status.spells[i];
+    }
+    for (i = 0, n = 0; i < HAND_ITEMS_CAP; i++) {
+        if (i < NUM_HAND_ITEMS) {
+            dst->equipHandCount[i] = g_Status.equipHandCount[i];
+        } else {
+            x->hand[i - NUM_HAND_ITEMS] = g_Status.equipHandCount[i];
+        }
+        // the sort order without the new items (a permutation again)
+        if (g_Status.equipHandOrder[i] < NUM_HAND_ITEMS) {
+            dst->equipHandOrder[n++] = g_Status.equipHandOrder[i];
+        }
+    }
+    for (i = 0; i < BODY_ITEMS_CAP; i++) {
+        if (i < NUM_BODY_ITEMS) {
+            dst->equipBodyCount[i] = g_Status.equipBodyCount[i];
+        } else {
+            x->body[i - NUM_BODY_ITEMS] = g_Status.equipBodyCount[i];
+        }
+    }
+    // the retail positions keep their own category (the equip menu lists
+    // positions by it; a compaction shifted the cloak list onto accessories):
+    // a new item sorted into a retail position gives it the retail item now
+    // at the new items' positions (two capes, then an accessory: in the
+    // order the retail capes, then accessories, come). SEL's load regroups
+    // the order the same way, so the mod's own order always allows this.
+    for (i = 0, n = NUM_BODY_ITEMS; i < NUM_BODY_ITEMS; i++) {
+        u8 v = g_Status.equipBodyOrder[i];
+
+        while (v >= NUM_BODY_ITEMS && n < BODY_ITEMS_CAP) {
+            v = g_Status.equipBodyOrder[n++];
+        }
+        dst->equipBodyOrder[i] = v < NUM_BODY_ITEMS ? v : i;
+    }
+    // saveName up to the stored familiars: the same layout in both
+    src = (u8*)g_Status.saveName;
+    d = (u8*)dst->saveName;
+    n = (u8*)&g_Status.statsFamiliars[FAMILIARS_STORED] - src;
+    for (i = 0; i < n; i++) {
+        d[i] = src[i];
+    }
+    for (i = 0; i < 7; i++) {
+        if (eq[i] >= (i < 2 ? NUM_HAND_ITEMS : NUM_BODY_ITEMS)) {
+            x->equip[i] = eq[i];
+            eq[i] = g_ModEmptySlot[i];
+        }
+    }
+    ModMarkSave((PlayerStatus*)dst);
+}
+#endif
+
+#if defined(MOD_SATURN_ITEMS_TEST)
+// Saturn port test aid (off by default, see include/game.h): loading a save
+// adds the new items that already work, so they can be tried before the
+// Saturn stages that hold them are ported.
+static void ModItemsTestGift(PlayerStatus* status) {
+    if (!status->equipHandCount[ITEM_SMELLY_RICE]) {
+        status->equipHandCount[ITEM_SMELLY_RICE] = 9;
+    }
+    if (!status->equipHandCount[ITEM_DELICIOUS_MEAL]) {
+        status->equipHandCount[ITEM_DELICIOUS_MEAL] = 9;
+    }
+    if (!status->equipHandCount[ITEM_SIGNED_PENCIL_BOARD]) {
+        status->equipHandCount[ITEM_SIGNED_PENCIL_BOARD] = 3;
+    }
+    if (!status->equipBodyCount[ITEM_SONG_LYRICS_CARD]) {
+        status->equipBodyCount[ITEM_SONG_LYRICS_CARD] = 1;
+    }
+    // the four new weapons (Saturn weapon overlays 60-63)
+    if (!status->equipHandCount[ITEM_ALUCARD_SPEAR]) {
+        status->equipHandCount[ITEM_ALUCARD_SPEAR] = 1;
+    }
+    if (!status->equipHandCount[ITEM_WOODLAND_SHIELD]) {
+        status->equipHandCount[ITEM_WOODLAND_SHIELD] = 1;
+    }
+    if (!status->equipHandCount[ITEM_ASTRAL_DAGGER]) {
+        status->equipHandCount[ITEM_ASTRAL_DAGGER] = 1;
+    }
+    if (!status->equipHandCount[ITEM_DOUBLE_BLADE_AXE]) {
+        status->equipHandCount[ITEM_DOUBLE_BLADE_AXE] = 1;
+    }
+    // a retail Combat knife, to compare with the Astral Dagger (same attack)
+    if (!status->equipHandCount[ITEM_COMBAT_KNIFE]) {
+        status->equipHandCount[ITEM_COMBAT_KNIFE] = 1;
+    }
+    // Library cards to use the test warp freely (topped up on every load)
+    if (status->equipHandCount[ITEM_LIBRARY_CARD] < 99) {
+        status->equipHandCount[ITEM_LIBRARY_CARD] = 99;
+    }
+    // for the dialogue warp chain: the strongest sword (quick bosses) and
+    // the Holy Glasses (Shaft's orb in the Richter fight), unless held/worn
+    if (!status->equipHandCount[ITEM_CRISSAEGRIM] &&
+        status->equipment[LEFT_HAND_SLOT] != ITEM_CRISSAEGRIM &&
+        status->equipment[RIGHT_HAND_SLOT] != ITEM_CRISSAEGRIM) {
+        status->equipHandCount[ITEM_CRISSAEGRIM] = 1;
+    }
+    if (!status->equipBodyCount[ITEM_HOLY_GLASSES] &&
+        ((u32*)status->equipment)[HEAD_SLOT] != ITEM_HOLY_GLASSES) {
+        status->equipBodyCount[ITEM_HOLY_GLASSES] = 1;
+    }
+}
+#endif
+#endif
+
+#if defined(MOD_SATURN) && !defined(MOD_SAVE_DRA)
+// Saturn port: SEL's saves (the ending's, the file menu's) are DRA's
+// StoreSaveData, which writes the retail layout; DRA sets the pointer every
+// frame (at the fixed address SEL's 2C048.c MOD_DUB_STATE uses too)
+void StoreSaveData(SaveData* save, s32 block, s32 cardIcon) {
+    ((void (*)(SaveData*, s32, s32))((ModDubState*)0x8013644C)->storeSave)(
+        save, block, cardIcon);
+}
+#else
 void StoreSaveData(SaveData* save, s32 block, s32 cardIcon) {
     const int RoomCount = 942;
     MemcardHeader h;
@@ -625,8 +929,70 @@ void StoreSaveData(SaveData* save, s32 block, s32 cardIcon) {
     dst->info.roomX = g_Tilemap.left;
     dst->info.roomY = g_Tilemap.top;
     dst->info.saveSize = sizeof(SaveData);
+#if defined(MOD_SATURN)
+    if (save == (SaveData*)SAVE_DATA_PTR) {
+        // the Library demo's snapshot (5087C.c): loaded back by
+        // ApplySaveData as it is
+        *dstStatus = g_Status;
+    } else {
+        ModSaveExtra* x = MOD_SAVE_EXTRA(dstStatus);
+
+        ModStoreRetailStatus((PlayerStatusRetail*)dstStatus);
+
+        // the Entrance save rooms moved one screen (see ApplySaveData):
+        // their retail spot; a mod-only area's save room: the Entrance's
+        if (g_StageId == STAGE_NP3 && g_Tilemap.top == 43) {
+            dst->info.roomY = 42;
+        } else if (g_StageId == STAGE_RNO3 && g_Tilemap.top == 20) {
+            dst->info.roomY = 21;
+        } else if (g_StageId == MOD_STAGE_GDN || g_StageId == MOD_STAGE_PRS ||
+                   g_StageId == MOD_STAGE_RGDN || g_StageId == MOD_STAGE_RPRS) {
+            x->stage = g_StageId;
+            x->roomX = g_Tilemap.left;
+            x->roomY = g_Tilemap.top;
+            if (g_StageId & STAGE_INVERTEDCASTLE_FLAG) {
+                dst->info.stage = STAGE_RNO3;
+                dst->info.roomX = 60;
+                dst->info.roomY = 21;
+            } else {
+                dst->info.stage = STAGE_NP3;
+                dst->info.roomX = 3;
+                dst->info.roomY = 42;
+            }
+        }
+        // (rooms are below 64: their top bits are free)
+        x->stage |= MOD_EXTRA_CARDS;
+        x->roomX |= (g_Status.relics[RELIC_JP_0] & 3) << 6;
+        x->roomY |= (g_Status.relics[RELIC_JP_1] & 3) << 6;
+        ((PlayerStatusRetail*)dstStatus)->relics[RELIC_JP_0] = 0;
+        ((PlayerStatusRetail*)dstStatus)->relics[RELIC_JP_1] = 0;
+    }
+#else
     *dstStatus = g_Status;
+#endif
     *dstNav = g_MenuNavigation;
+#if defined(MOD_SATURN)
+    // the equip menu's Holder row is not a retail slot
+    if (dstNav->cursorEquip == MOD_HOLDER_SLOT) {
+        dstNav->cursorEquip = 0;
+    }
+    // the retail lists are shorter (no new items, no Extra settings row):
+    // their cursors from the top, or the US game shows stale rows
+    if (save != (SaveData*)SAVE_DATA_PTR) {
+        s32 k;
+
+        dstNav->cursorHandEquipType = 0;
+        for (k = 0; k < LEN(dstNav->cursorEquipType); k++) {
+            dstNav->cursorEquipType[k] = 0;
+        }
+        for (k = 0; k < LEN(dstNav->scrollEquipType); k++) {
+            dstNav->scrollEquipType[k] = 0;
+        }
+        if (dstNav->cursorSettings > 5) {
+            dstNav->cursorSettings = 0;
+        }
+    }
+#endif
     *dstSettings = g_Settings;
 
     for (i = 0; i < LEN(g_CastleFlags); i++) {
@@ -639,6 +1005,7 @@ void StoreSaveData(SaveData* save, s32 block, s32 cardIcon) {
 
     dst->rng = g_randomNext;
 }
+#endif
 
 s32 ApplySaveData(SaveData* save) {
     s32 i;
@@ -648,6 +1015,9 @@ s32 ApplySaveData(SaveData* save) {
     MenuNavigation* srcNav;
     GameSettings* settings;
     SaveData* savePtr = save;
+#if defined(MOD_SATURN) && !defined(MOD_SAVE_DRA)
+    s32 oldGodspeed;
+#endif
 
     if (savePtr->info.saveSize != (sizeof(SaveData))) {
         return -1;
@@ -662,8 +1032,69 @@ s32 ApplySaveData(SaveData* save) {
     g_RoomCount = savePtr->info.nRoomsExplored;
     g_Tilemap.left = savePtr->info.roomX;
     g_Tilemap.top = savePtr->info.roomY;
+#if defined(MOD_SATURN) && !defined(MOD_SAVE_DRA)
+    // the Castle Entrance save room moved from (3,42) to (3,43), behind the
+    // Saturn shaft's alcove (mods/sotn-ultimate/tools/gen_mod_rooms.py): move
+    // saves made in the old spot (retail, SAT1) with it
+    if (g_StageId == STAGE_NP3 && g_Tilemap.left == 3 && g_Tilemap.top == 42) {
+        g_Tilemap.top = 43;
+    }
+    // and the Reverse Entrance's, its mirror, from (60,21) to (60,20)
+    if (g_StageId == STAGE_RNO3 && g_Tilemap.left == 60 &&
+        g_Tilemap.top == 21) {
+        g_Tilemap.top = 20;
+    }
+#endif
 
     g_Status = *srcStatus;
+#if defined(MOD_SATURN) && !defined(MOD_SAVE_DRA)
+    // every save older than "SAT3" kept God Speed Shoes in RELIC_JP_0 (the
+    // Sprite card's slot); they move to their castle flag byte below
+    oldGodspeed = 0;
+    if (ModHasMagic(&g_Status, MOD_SAVE_MAGIC)) {
+        // "SAT4": the retail layout, plus what it could not hold
+        ModSaveExtra x = *MOD_SAVE_EXTRA(&g_Status);
+        u32* eq;
+
+        ModConvertRetailStatus(&g_Status);
+        for (i = 0; i < LEN(x.hand); i++) {
+            g_Status.equipHandCount[NUM_HAND_ITEMS + i] = x.hand[i];
+        }
+        for (i = 0; i < LEN(x.body); i++) {
+            g_Status.equipBodyCount[NUM_BODY_ITEMS + i] = x.body[i];
+        }
+        eq = g_Status.equipment;
+        for (i = 0; i < 7; i++) {
+            if (x.equip[i]) {
+                eq[i] = x.equip[i];
+            }
+        }
+        if (x.stage & MOD_EXTRA_CARDS) {
+            g_Status.relics[RELIC_JP_0] = x.roomX >> 6;
+            g_Status.relics[RELIC_JP_1] = x.roomY >> 6;
+            x.roomX &= 0x3F;
+            x.roomY &= 0x3F;
+        }
+        if (x.stage & ~MOD_EXTRA_CARDS) {
+            g_StageId = x.stage & ~MOD_EXTRA_CARDS;
+            g_Tilemap.left = x.roomX;
+            g_Tilemap.top = x.roomY;
+        }
+    } else if (!ModHasMagic(&g_Status, MOD_SAVE_MAGIC_SAT3)) {
+        oldGodspeed = g_Status.relics[RELIC_JP_0] | 0x100;
+        g_Status.relics[RELIC_JP_0] = RELIC_FLAG_DISABLE;
+        if (ModHasMagic(&g_Status, MOD_SAVE_MAGIC_SAT1)) {
+            ModConvertSat1Status(&g_Status);
+        } else if (ModHasMagic(&g_Status, MOD_SAVE_MAGIC_SAT2)) {
+            ModMarkSave(&g_Status);
+        } else {
+            ModConvertRetailStatus(&g_Status);
+        }
+    }
+#if defined(MOD_SATURN_ITEMS_TEST)
+    ModItemsTestGift(&g_Status);
+#endif
+#endif
     g_MenuNavigation = *srcNav;
 
     prevCompletionFlags1 = g_Settings.D_8003CB00;
@@ -675,6 +1106,16 @@ s32 ApplySaveData(SaveData* save) {
     for (i = 0; i < LEN(g_CastleFlags); i++) {
         g_CastleFlags[i] = savePtr->castleFlags[i];
     }
+#if defined(MOD_SATURN) && !defined(MOD_SAVE_DRA)
+    if (oldGodspeed) {
+        // one-time move of God Speed Shoes out of RELIC_JP_0 (see above);
+        // the familiar stat bytes next to it were never used by old saves
+        g_CastleFlags[MOD_CF_GODSPEED] = oldGodspeed;
+        for (i = 0; i < (NUM_FAMILIARS - FAMILIARS_STORED) * 4; i++) {
+            g_CastleFlags[MOD_CF_FAMILIARS + i] = 0;
+        }
+    }
+#endif
 
     for (i = 0; i < LEN(g_CastleMap); i++) {
         g_CastleMap[i] = savePtr->castleMap[i];

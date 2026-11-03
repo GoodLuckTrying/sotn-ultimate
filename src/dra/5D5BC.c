@@ -72,7 +72,7 @@ s32 func_800FD6C4(EquipKind equipTypeFilter) {
 
     switch (equipTypeFilter) {
     case EQUIP_HAND:
-        return NUM_HAND_ITEMS;
+        return HAND_ITEMS_CAP;
     case EQUIP_HEAD:
         equipType = EQUIP_HEAD - 1;
         break;
@@ -87,7 +87,7 @@ s32 func_800FD6C4(EquipKind equipTypeFilter) {
         break;
     }
 
-    for (itemCount = 0, i = 0; i < NUM_BODY_ITEMS; i++) {
+    for (itemCount = 0, i = 0; i < BODY_ITEMS_CAP; i++) {
         if (g_AccessoryDefs[i].equipType == equipType) {
             itemCount++;
         }
@@ -327,7 +327,17 @@ u32 CheckAndDoLevelUp(void) {
     }
     if (g_ExpNext[g_Status.level + 1] <= g_Status.exp) {
         g_Status.level++;
+#if defined(MOD_SATURN)
+        // Saturn CheckAndDoLevelUp (src/saturn/game_3b.c): full MP stays
+        // full at the new maximum (Saturn balance)
+        i = g_Status.mp == g_Status.mpMax && !MOD_PS1_BALANCE();
         g_Status.mpMax += 4 + (rand() & 1);
+        if (i) {
+            g_Status.mp = g_Status.mpMax;
+        }
+#else
+        g_Status.mpMax += 4 + (rand() & 1);
+#endif
         g_Status.hp += g_LevelHPIncrease[g_Status.level / 10];
         g_Status.hpMax += g_LevelHPIncrease[g_Status.level / 10];
         g_Status.heartsMax += 2;
@@ -368,6 +378,9 @@ s32 func_800FE044(s32 amount, s32 type) {
     s32 levelDiff;
     s32 i;
     u32 playerXPBoost;
+#if defined(MOD_SATURN)
+    FamiliarStats famStats;
+#endif
 
     // Life Max Up
     if (type == 0x8000) {
@@ -410,7 +423,12 @@ s32 func_800FE044(s32 amount, s32 type) {
 
     // Collect a relic. "amount" here isn't an amount, it's the relic ID.
     if (type == 0x2000) {
+#if defined(MOD_GODSPEED)
+        // Saturn port: relic 30 (God Speed Shoes) is kept outside relics[]
+        MOD_RELIC_FLAGS(amount) = 3;
+#else
         g_Status.relics[amount] = 3;
+#endif
         if (g_RelicDefs[amount].unk0C) {
             g_Status.relics[amount] = 1;
         }
@@ -449,8 +467,13 @@ s32 func_800FE044(s32 amount, s32 type) {
             return;
         }
         activeFamiliar = g_Servant - 1;
+#if defined(MOD_SATURN)
+        ModGetFamiliarStats(activeFamiliar, &famStats);
+        playerXPBoost = amount / famStats.level;
+#else
         playerXPBoost =
             (amount / g_Status.statsFamiliars[activeFamiliar].level);
+#endif
         // Here we reuse i to keep track of how much xp the familiar gains.
         i = 0;
         while (playerXPBoost != 0) {
@@ -463,17 +486,78 @@ s32 func_800FE044(s32 amount, s32 type) {
         if (i <= 0) {
             i = 1;
         }
+#if defined(MOD_SATURN)
+        famStats.exp += i;
+        if (famStats.exp > 9899) {
+            famStats.exp = 9899;
+        }
+        famStats.level = (famStats.exp / 100) + 1;
+        ModSetFamiliarStats(activeFamiliar, &famStats);
+#else
         g_Status.statsFamiliars[activeFamiliar].exp += i;
         if (g_Status.statsFamiliars[activeFamiliar].exp > 9899) {
             g_Status.statsFamiliars[activeFamiliar].exp = 9899;
         }
         g_Status.statsFamiliars[activeFamiliar].level =
             (g_Status.statsFamiliars[activeFamiliar].exp / 100) + 1;
+#endif
     }
 }
 
+#if defined(MOD_SATURN)
+// Saturn port: the stats of the JP-only familiars (Sprite, Nose Devil) were
+// dropped from g_Status by the inventory expansion; they live in castle flag
+// bytes (MOD_CF_FAMILIARS in include/game.h), saved with the castle flags and
+// zeroed on a new game (= level 1, exp 0, as the new-game init sets).
+static u8* ModFamiliarBytes(s32 i) {
+    return &g_CastleFlags[MOD_CF_FAMILIARS + (i - FAMILIARS_STORED) * 4];
+}
+
+void ModGetFamiliarStats(s32 i, FamiliarStats* out) {
+    u8* p;
+
+    if (i < FAMILIARS_STORED) {
+        *out = g_Status.statsFamiliars[i];
+        return;
+    }
+    p = ModFamiliarBytes(i);
+    out->exp = p[0] | (p[1] << 8);
+    out->unk8 = p[2] | (p[3] << 8);
+    out->level = out->exp / 100 + 1;
+}
+
+void ModSetFamiliarStats(s32 i, FamiliarStats* in) {
+    u8* p;
+
+    if (i < FAMILIARS_STORED) {
+        g_Status.statsFamiliars[i] = *in;
+        return;
+    }
+    p = ModFamiliarBytes(i);
+    p[0] = in->exp;
+    p[1] = in->exp >> 8;
+    p[2] = in->unk8;
+    p[3] = in->unk8 >> 8;
+}
+
+// the summon counter (unk8) of the familiar just summoned (menu.c)
+void ModCountFamiliarSummon(void) {
+    FamiliarStats stats;
+
+    ModGetFamiliarStats(g_Servant - 1, &stats);
+    if (stats.unk8 < 9999) {
+        stats.unk8++;
+        ModSetFamiliarStats(g_Servant - 1, &stats);
+    }
+}
+#endif
+
 bool IsRelicActive(RelicIds relicId) {
+#if defined(MOD_GODSPEED)
+    if (MOD_RELIC_FLAGS(relicId) & RELIC_FLAG_ACTIVE) {
+#else
     if (g_Status.relics[relicId] & RELIC_FLAG_ACTIVE) {
+#endif
         return 1;
     }
     return 0;

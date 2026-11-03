@@ -318,6 +318,14 @@ enum AluBlueprints {
     BP_SLEEP_ZZZ,
     NUM_BLUEPRINTS,
 };
+#if defined(MOD_SATURN)
+// Saturn port: the Saturn's blueprint table (ALUCARD.PRG 0x060CCB78) goes on
+// to 128; 123-126 (and 128) spawn Saturn-only entities. 7879C.c appends
+// 123-127 after the retail ones (macros, not enum entries: the asset tool
+// matches the enum against assets/dra/us/blueprints.yaml)
+#define MOD_NUM_BLUEPRINTS (NUM_BLUEPRINTS + 5)
+#define BP_MOD_SPEAR_SPARK 127 // Alucard spear's sparks (weapon slot 3)
+#endif
 
 // NOTE: B_MAKE from DRA is different than RIC or MARIA!
 // Parsing is done in EntityFactory
@@ -453,6 +461,13 @@ typedef struct {
     s32 tpage;
     s32 clut;
 } RicSubwpnIconParams;
+#if defined(MOD_SATURN_MARIA) && !defined(VERSION_PSP)
+// Saturn port: the Richter HUD's subweapon icon table (src/dra/5F60C.c);
+// the PSP Maria's overlay points it at her own icons, cd.c resets it
+extern RicSubwpnIconParams g_ricSubwpnIcons[];
+extern RicSubwpnIconParams* g_ModSubwpnIcons;
+extern Primitive* (*g_ModMar2HudIcons)(Primitive* prim);
+#endif
 
 typedef struct {
     u32 displayHP;
@@ -583,6 +598,9 @@ extern GfxBank** g_GfxSharedBank[];
 extern s16** D_800A3B70[18];
 extern u_long* D_800A3BB8[];
 extern Lba g_StagesLba[80];
+#if defined(MOD_SATURN)
+u32 ModStageMusic(void);
+#endif
 
 extern SubweaponDef g_SubwpnDefs[13];
 // These are different on PSP since they have text that needs translating.
@@ -599,9 +617,17 @@ extern Equipment* g_EquipDefs;
 extern RelicDesc g_RelicDefs[30];
 extern SpellDef g_SpellDefs[28];
 extern const char* g_MenuStr[110];
+#if defined(MOD_SATURN)
+extern EnemyDef g_EnemyDefs[426];
+#else
 extern EnemyDef g_EnemyDefs[400];
+#endif
 extern Accessory g_AccessoryDefs[90];
+#if defined(MOD_SATURN)
+extern Equipment g_EquipDefs[MOD_NUM_EQUIP_DEFS];
+#else
 extern Equipment g_EquipDefs[217];
+#endif
 #endif
 extern s32 g_ExpNext[];
 extern s16 D_800AC958[];
@@ -725,6 +751,17 @@ extern const char aSp1603x;
 extern const char aTile03x;
 extern Unkstruct_800BF554 g_SfxData[];
 
+#if defined(MOD_SATURN)
+// Saturn port: the third hand (mods/sotn-ultimate/src/items/mod_holder.h, in
+// 7879C.c)
+#define MOD_E_HOLDER_FOOD 68 // g_DraEntityTbl: EntityModHolderFood
+bool ModHolderAllows(s32 id);
+s32 ModHolderItem(void);
+s32 ModHolderOn(void); // MOD_HOLDER_ON() as a call (menu.c size)
+s32 ModHolderUse(void);
+void EntityModHolderFood(Entity* self);
+#endif
+
 extern char* aLightTimer02x;
 extern SVECTOR D_800E2024;
 extern SVECTOR D_800E202C;
@@ -804,6 +841,7 @@ u32 CheckEquipmentItemCount(u32 itemId, u32 equipType);
 void GetSpellDef(SpellDef* spell, s32 id);
 void LearnSpell(s32 spellId);
 bool IsRelicActive(RelicIds relicId);
+#include "../../mods/sotn-ultimate/src/familiars/dra_mod_familiars.h"
 s32 HandleGravityBootsMP(CallMode mode);
 s32 func_800FE3C4(SubweaponDef* subwpn, s32 subweaponId, bool useHearts);
 void GetEquipProperties(s32 handId, Equipment* res, s32 equipId);
@@ -958,6 +996,25 @@ s16 AllocPrimitivesReverse(u8 type, s32 count);
 s16 GetStatusAilmentTimer(StatusAilments statusAilment, s16 timer);
 s16 func_80110394(void);
 int MemcardDetectSave(s32 nPort, u8* expectedSaveName, s32 block);
+#endif
+
+#if defined(MOD_SATURN) && defined(VERSION_US) && !defined(MOD_ULTIMATE_DEBUG)
+// Saturn port: US never calls FntFlush (only HD and the mod's debug build
+// do), so DRA's FntPrint debug lines never reach the screen. Dropped for
+// room (MOD_DRA_PAD): the PSP dub toggle's voice table (sound.c)
+#define FntPrint(...) ((void)0)
+#endif
+
+#if defined(MOD_SATURN) && defined(VERSION_US)
+// Saturn port: DRA code the US disc build can never run is dropped to free
+// room for the mod (MOD_DRA_PAD). Each removal says why it is dead. No
+// overlay calls DRA's code directly
+// (only through g_api, a data table), so code may move.
+#define MOD_DRA_STRIP
+// main.c sets g_UseDisk = 1 whenever DRA.BIN came from the CD (0 and 2 mean
+// the dev-kit "sim:" PC loader) and DRA never writes it, so every PC-file
+// branch folds away.
+#define g_UseDisk 1
 #endif
 
 #endif

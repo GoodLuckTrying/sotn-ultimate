@@ -2,6 +2,10 @@
 #include "dra.h"
 #include "dra_bss.h"
 
+#if defined(MOD_SATURN_ITEMS)
+#include "../../mods/sotn-ultimate/src/items/4A538_mod_rainbow_cape.h"
+#endif
+
 void func_800EA538(s32 arg0) {
     s32 i;
     Unkstruct_8006C3C4* ptr;
@@ -131,9 +135,11 @@ void func_800EA7CC(void) {
     bool isAnimNotDone;
     Unkstruct_8006C3C4* ptr;
 
+#if !defined(MOD_DRA_STRIP) // the palette viewer: HD / PC debug menu only
     if (g_DebugEnabled && g_DebugMode == 10) {
         return;
     }
+#endif
 
     for (i = 0; i < LEN(palettes); i++) {
         palettes[i] = 0;
@@ -166,9 +172,14 @@ void func_800EA7CC(void) {
             ptr->unk8 = 0;
             break;
         case PAL_UNK_OP3: // palette rotation
-            for (j = 0; j < count; j++) {
-                *clut++ = *data++;
-            }
+#if defined(MOD_SATURN)
+            if (desc == (u_long*)g_ModRainbowCapePal) {
+                ModRainbowCape(clut);
+            } else
+#endif
+                for (j = 0; j < count; j++) {
+                    *clut++ = *data++;
+                }
             for (j = 0; j < LEN(palettes); j++) {
                 palettes[j] |= ptr->unkArray[j];
             }
@@ -245,9 +256,11 @@ void func_800EA7CC(void) {
         }
     }
 
+#if !defined(MOD_DRA_STRIP)
     if (g_DebugEnabled && g_DebugMode == DEBUG_PALETTE_VIEWER) {
         palettes[g_DebugCurPal >> 4] = 1;
     }
+#endif
 
     // re-upload updated stage tileset palette
     offset = 0;

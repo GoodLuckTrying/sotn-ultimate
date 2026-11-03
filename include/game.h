@@ -1048,7 +1048,51 @@ typedef struct {
 #define RELIC_FLAG_DISABLE 0
 #define RELIC_FLAG_FOUND 1
 #define RELIC_FLAG_ACTIVE 2
-#if defined(VERSION_US)
+
+// Saturn port mod. MOD_SATURN covers every Saturn-only feature; MOD_GODSPEED
+// (defined with it) is the God Speed Shoes code: the relic, its sprint and
+// the 31-relic menu. God Speed Shoes are relic 30 like on the
+// Saturn, one past g_Status.relics[]: their flag byte lives in a castle flag
+// byte (MOD_CF_GODSPEED), so the save layout stays the same and the JP-only
+// Sprite / Nose Devil cards keep RELIC_JP_0 / RELIC_JP_1. Code that may see
+// relic 30 goes through MOD_RELIC_FLAGS(). Saves made before this kept the
+// shoes in RELIC_JP_0; save_mgr.h moves them once (MOD_SAVE_MAGIC "SAT3").
+// Build with -DNO_MOD_ULTIMATE to get the vanilla game back (the whole mod
+// off).
+#if defined(VERSION_US) && !defined(NO_MOD_ULTIMATE)
+#define MOD_SATURN
+#define MOD_GODSPEED
+// The mod's parts, one per mods/sotn-ultimate/src folder. They are defined
+// together and are not separate toggles (they share DRA's layout, the disc
+// and the save format); each names the part a hook belongs to.
+#define MOD_SATURN_AUDIO   // audio/: Saturn music table, CD pause
+#define MOD_SATURN_CASTLE  // castle/: edits to retail stages
+#define MOD_SATURN_DISC    // disc/: the new disc files and their loaders
+#define MOD_SATURN_ENEMIES // enemies/: Saturn enemies, bestiary
+#define MOD_SATURN_ITEMS   // items/: Saturn weapons and equipment
+#define MOD_ULTIMATE_MENU  // menu/: Ultimate settings, Player Select
+#define RELIC_GODSPEED_SHOES NUM_RELICS
+// Castle flag bytes no overlay uses (static and indexed uses all stay at or
+// below 0x1E0, the save / new-game loops excepted). 0x2F0: God Speed Shoes'
+// RELIC_FLAG_* bits. 0x2F1-0x2F8: the JP familiars' stats (Sprite, then Nose
+// Devil), 4 bytes each: exp and unk8 (summon count) as little-endian u16. The
+// level is always exp / 100 + 1 (see the exp gain in src/dra/5D5BC.c), so it is
+// not stored.
+#define MOD_CF_GODSPEED 0x2F0
+#define MOD_CF_FAMILIARS 0x2F1
+#define MOD_RELIC_FLAGS(id)                                                    \
+    (*((id) == RELIC_GODSPEED_SHOES ? &g_CastleFlags[MOD_CF_GODSPEED]          \
+                                    : &g_Status.relics[id]))
+// Test builds only: Alucard starts the game with the shoes.
+// #define MOD_GODSPEED_TEST_START
+// Test builds only: on-screen readout of Alucard's player state.
+// #define MOD_ULTIMATE_DEBUG
+#endif
+
+#if defined(MOD_GODSPEED)
+// all 30 relics plus God Speed Shoes (31 entries, 16 menu rows)
+#define NUM_AVAIL_RELICS (NUM_RELICS + 1)
+#elif defined(VERSION_US)
 #define NUM_AVAIL_RELICS (NUM_RELICS - 2)
 #else
 #define NUM_AVAIL_RELICS (NUM_RELICS)
@@ -1143,13 +1187,22 @@ typedef enum {
     FAM_ACTIVE_NOSE_DEMON = FAM_STATS_NOSE_DEMON + 1,
 } FamiliarActiveIds;
 
+#if defined(MOD_SATURN) && !defined(STAGE_IS_TEK)
+#include "../mods/sotn-ultimate/include/game_mod.h"
+#else
+#define HAND_ITEMS_CAP NUM_HAND_ITEMS
+#define MOD_SPECIAL(retailId) (retailId)
+#define BODY_ITEMS_CAP NUM_BODY_ITEMS
+#define FAMILIARS_STORED NUM_FAMILIARS
+#endif
+
 typedef struct {
     /* 80097964 */ u8 relics[NUM_RELICS];
     /* 80097982 */ u8 spells[NUM_SPELLS];
-    /* 8009798A */ u8 equipHandCount[NUM_HAND_ITEMS];
-    /* 80097A33 */ u8 equipBodyCount[NUM_BODY_ITEMS];
-    /* 80097A8D */ u8 equipHandOrder[NUM_HAND_ITEMS];
-    /* 80097B36 */ u8 equipBodyOrder[NUM_BODY_ITEMS];
+    /* 8009798A */ u8 equipHandCount[HAND_ITEMS_CAP];
+    /* 80097A33 */ u8 equipBodyCount[BODY_ITEMS_CAP];
+    /* 80097A8D */ u8 equipHandOrder[HAND_ITEMS_CAP];
+    /* 80097B36 */ u8 equipBodyOrder[BODY_ITEMS_CAP];
     /* 80097B90 */ char saveName[12];
     /* 80097B9C */ u32 spellsLearnt;
     /* 80097BA0 */ s32 hp;
@@ -1187,8 +1240,14 @@ typedef struct {
     // MARIA: secondary subweapon
     /* 80097C40 */ u32 D_80097C40;
 
-    /* 80097C44 */ FamiliarStats statsFamiliars[NUM_FAMILIARS];
+    /* 80097C44 */ FamiliarStats statsFamiliars[FAMILIARS_STORED];
+#if defined(MOD_SATURN) && !defined(STAGE_IS_TEK)
+    u8 modPadding[4];
+#endif
 } PlayerStatus; /* size=0x334 */
+#if defined(MOD_SATURN) && !defined(STAGE_IS_TEK)
+#include "../mods/sotn-ultimate/include/game_mod_status.h"
+#endif
 
 typedef enum {
     FADE_NONE,
@@ -2253,6 +2312,11 @@ extern s32 D_800974A4; // map open
 extern DR_ENV D_800974AC[16];
 extern s32 g_UseDisk;
 extern s32 D_800978B4;
+#if defined(MOD_SATURN)
+// D_800978B4 (ending id) value for the Saturn "STAFF" name code: SEL's
+// ending handler skips the movie and the cutscene and rolls the credits only.
+#define MOD_ENDING_STAFF 0x10
+#endif
 extern s32 D_800978C4;
 extern u32 g_MenuStep;
 extern s32 D_80097904;

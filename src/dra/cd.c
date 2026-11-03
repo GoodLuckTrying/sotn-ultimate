@@ -79,7 +79,22 @@ CdFile g_LbaServantChr = {0x0000, 15, 0x06000, 0, 0, 0x1D, 0};
 CdFile g_LbaServantVh = {0x0000, 19, 0x00000, 2, 2, 0xFF, 30};
 CdFile g_LbaServantVb = {0x0000, 17, 0x00000, 2, 2, 0xFF, 0};
 CdFile g_LbaBinRichter = {0x64D6, 10, 0x39A58, 0, 0, 0x14, 0};
+#if defined(MOD_SATURN)
+#ifndef OFF_BIN_ARC_F2
+#define OFF_BIN_ARC_F2 0 // (the first compile of make disk, as below)
+#endif
+#endif
+#if defined(MOD_SATURN) && OFF_BIN_ARC_F2 != 0
+// Saturn port: BIN/ARC_F2.BIN = Alucard's sprites (retail ARC_F.BIN) + the
+// System screen's "Ultimate settings" code after them
+// (mods/sotn-ultimate/src/mod_sysopt,
+// mods/sotn-ultimate/tools/build_sysopt.sh), a new file at the disc's end (no
+// file moves; the retail ARC_F.BIN stays where it was, unused), loaded up to
+// 0x80170000
+CdFile g_LbaBinAlucard = {OFF_BIN_ARC_F2, 10, MOD_ARC_F_LEN, 0, 0, 0x04, 0};
+#else
 CdFile g_LbaBinAlucard = {0x616A, 10, 0x31BEC, 0, 0, 0x04, 0};
+#endif
 CdFile g_LbaOpnWsStr = {0x3631, 0, 0x00000, 0, 0, 0xFF, 0};
 CdFile g_LbaStagePrg = {0x0000, 8, 0x00000, 0, 0, 0xFF, 0};
 CdFile g_LbaBinGo = {0x654A, 9, 0x1C000, 0, 0, 0xFF, 0};
@@ -178,6 +193,9 @@ void CopyMonsterPreviewCallback(void);
 void func_80107DB4(void);
 void func_80107C6C(void);
 void func_80107EF0(void);
+#if defined(MOD_SATURN_DISC)
+#include "../../mods/sotn-ultimate/src/disc/cd_mod_files.h"
+#endif
 void (*g_CdCallbacks[])(void) = {
     func_801080DC,        func_801080DC,        func_801080DC,
     func_801080DC,        CopyStageOvlCallback, func_801080DC,
@@ -216,6 +234,9 @@ void func_801073C0(void) {
 s32 func_801073E8(void) {
     u8 res;
     s32 ret;
+#if defined(MOD_DRA_STRIP) // D_80137F9C: written, never read (now a local)
+    s32 D_80137F9C;
+#endif
 
     if (CdSync(CdlNop, &res) == CdlNoIntr) {
         return D_80137F9C = 0;
@@ -430,11 +451,18 @@ void func_80107C6C(void) {
     } else {
         len = g_Cd.overlayLastBlockSize;
     }
-    D_80137FA8 = SsVabTransBodyPartly(g_Cd.overlayCopySrc, len, g_VabId);
-    if (D_80137FA8 == -1) {
-        CdDataCallback(NULL);
-        g_Cd.D_80137F78 = -3;
+#if defined(MOD_DRA_STRIP) // D_80137FA8: read only here (now a local)
+    {
+        s16 D_80137FA8;
+#endif
+        D_80137FA8 = SsVabTransBodyPartly(g_Cd.overlayCopySrc, len, g_VabId);
+        if (D_80137FA8 == -1) {
+            CdDataCallback(NULL);
+            g_Cd.D_80137F78 = -3;
+        }
+#if defined(MOD_DRA_STRIP)
     }
+#endif
     g_Cd.D_80137F70 = (g_Cd.D_80137F70 + 1) & 7;
     g_Cd.D_80137F74++;
     g_Cd.overlayBlockCount--;
@@ -601,6 +629,7 @@ void func_801083BC(void) {
     D_800ACC64.loc = 0;
 }
 
+#if !defined(MOD_DRA_STRIP) // no caller in the US build
 bool func_801083F0(void) {
     g_CdStep = CdStep_LoadInit;
     g_LoadFile = CdFile_25;
@@ -614,6 +643,7 @@ bool func_801083F0(void) {
 
     return true;
 }
+#endif
 
 void func_80107460(void);
 
@@ -654,6 +684,37 @@ void UpdateCd(void) {
         } else {
             g_LbaStagePrg.loc = g_StagesLba[g_StageId].ovlOff;
             g_LbaStagePrg.size = g_StagesLba[g_StageId].ovlLen;
+#if defined(MOD_SATURN) && OFF_BIN_BO6RIC2 != 0
+            // Saturn port: boss Richter in the Saturn coat. BIN/BO6RIC2.BIN
+            // is BO6.BIN (same size and code) with RIC2's sprite sheet,
+            // frames and palettes (mods/sotn-ultimate/tools/build_bo6ric2.py)
+            if (g_StageId == STAGE_BO6 && MOD_BOSS_RIC_SATURN()) {
+                g_LbaStagePrg.loc = OFF_BIN_BO6RIC2;
+            }
+#endif
+#if defined(MOD_SATURN) && OFF_BIN_SELRIC2 != 0
+            // ... and in the endings: BIN/SELRIC2.BIN is SEL.BIN with the
+            // coat on its Richter (mods/sotn-ultimate/tools/build_selric2.py),
+            // for an Alucard game with that boss or a Richter game in the
+            // costume
+            if (g_StageId == STAGE_SEL &&
+                (MOD_BOSS_RIC_SATURN() || MOD_RIC_COSTUME2())) {
+                g_LbaStagePrg.loc = OFF_BIN_SELRIC2;
+            }
+#endif
+#if defined(MOD_SATURN) && OFF_BIN_CENP != 0
+            // Saturn port: the PSP Maria fight (the select screen's "Maria
+            // boss: PSP"). BIN/CENP.BIN is CEN with it in the Saturn fight's
+            // place (mods/sotn-ultimate/tools/build_cenp.sh), padded to the
+            // whole stage area (0x60000; the PSP dub's CEN bank follows, see
+            // StageSfx). Only Alucard games set the flag (SEL); CENP's fight
+            // checks the player too
+            if (g_StageId == STAGE_CEN &&
+                (MOD_STATUS_FLAGS & MOD_FLAG_MARIA_BOSS_PSP)) {
+                g_LbaStagePrg.loc = OFF_BIN_CENP;
+                g_LbaStagePrg.size = 0x60000;
+            }
+#endif
             seqIdx = g_StagesLba[g_StageId].seqIdx;
             if (seqIdx >= 0) { // A stage has an optional sequence file
                 g_LbaStagePrg.nextCdFileType = CdFile_Seq;
@@ -672,6 +733,65 @@ void UpdateCd(void) {
             g_LbaStageVh.loc = g_StagesLba[g_LoadOvlIdx].vhOff;
             g_LbaStageVh.size = g_StagesLba[g_LoadOvlIdx].vhLen;
             g_LbaStageVb.size = g_StagesLba[g_LoadOvlIdx].vbLen;
+#if defined(MOD_SATURN) && OFF_BIN_SFX_PSP != 0
+            // PSP dub: the stage's bank with the PSP's voices (boss and
+            // enemy voices; BIN/SFX_PSP.BIN, laid out as SD_Z*.VH + VB,
+            // mods/sotn-ultimate/tools/gen_psp_sfx.py). lba_stage.c keeps its
+            // sector + 1 in the (unused) name field; CEN has none (below)
+            if (MOD_PSP_DUB_ON() && g_StagesLba[g_LoadOvlIdx].name) {
+                g_LbaStageVh.loc =
+                    OFF_BIN_SFX_PSP - 1 + (s32)g_StagesLba[g_LoadOvlIdx].name;
+#if OFF_BIN_JP_SD != 0
+                // the JP dub: the bank with its Japanese clips, or retail
+                {
+                    s32 jp = ModJpSfx((s32)g_StagesLba[g_LoadOvlIdx].name);
+                    if (jp) {
+                        g_LbaStageVh.loc =
+                            jp < 0 ? g_StagesLba[g_LoadOvlIdx].vhOff : jp;
+                    }
+                }
+#endif
+            }
+#endif
+#if defined(MOD_SATURN) && OFF_BIN_CENP != 0
+            // the PS1 dub: CEN's bank for the Saturn boss Maria / the PSP
+            // one, CENP.BIN's tail after the PSP dub's
+            // (mods/sotn-ultimate/tools/ build_cenp.sh)
+            if (g_LoadOvlIdx == STAGE_CEN && !MOD_PSP_DUB_ON()) {
+                g_LbaStageVh.loc =
+                    OFF_BIN_CENP +
+                    (MOD_STATUS_FLAGS & MOD_FLAG_MARIA_BOSS_PSP ? 0x99000
+                                                                : 0x7C800) /
+                        0x800;
+            }
+            // the PSP boss Maria with the PSP dub: CEN's bank with her PSP
+            // English clips (mods/sotn-ultimate/tools/gen_cenp_sounds.py),
+            // CENP.BIN's tail
+            if (g_LoadOvlIdx == STAGE_CEN && MOD_PSP_DUB_ON() &&
+                (MOD_STATUS_FLAGS & MOD_FLAG_MARIA_BOSS_PSP)) {
+                g_LbaStageVh.loc = OFF_BIN_CENP + 0x60000 / 0x800;
+#if OFF_BIN_JP_SD != 0
+                // the JP dub: her Japanese clips (same slots)
+                if (MOD_JP_DUB_ON()) {
+                    g_LbaStageVh.loc = OFF_BIN_JP_SD + MOD_JP_SD_CENP;
+                }
+#endif
+            }
+#endif
+#if defined(MOD_SATURN) && OFF_BIN_NO3RIDE != 0
+            // Richter's / Maria's NO3: the bank with their horse ride's neigh
+            // over Death's samples (BIN/NO3RIDE.BIN, mods/sotn-ultimate/tools/
+            // gen_no3_sounds.py: two banks of SD_ZKNO3's size, VH + VB, the
+            // second from the PSP dub's NO3 bank; the JP dub has none of its
+            // own for NO3)
+            if (g_LoadOvlIdx == STAGE_NO3 &&
+                g_PlayableCharacter != PLAYER_ALUCARD) {
+                g_LbaStageVh.loc = OFF_BIN_NO3RIDE;
+                if (MOD_PSP_DUB_ON()) {
+                    g_LbaStageVh.loc += MOD_NO3RIDE_SECTORS;
+                }
+            }
+#endif
         }
         if (*pLoadFile == CdFile_GameChr) {
             if (g_StageId == STAGE_ST0 ||
@@ -683,12 +803,151 @@ void UpdateCd(void) {
                 g_LbaBinGame.nextCdFileType = CdFile_AlucardPrg;
             }
         }
+#if defined(MOD_SATURN) && OFF_BIN_RIC2 != 0
+        // Saturn port: Richter's alternate costume is a second copy of his
+        // overlay with another sprite sheet (BIN/RIC2.BIN, same size and
+        // code; mods/sotn-ultimate/tools/build_ric2.py)
+        if (*pLoadFile == CdFile_RichterPrg) {
+#if OFF_BIN_MARIA != 0 && OFF_BIN_MARIA_SD != 0
+            // Saturn port: her Saturn voice and sounds. The overlay's load
+            // goes on to VAB/SD_RIH (vab 1) and VAB/SD_MAR (vab 2, the
+            // prologue's Maria); for her those four CdFiles (consecutive,
+            // g_LbaSdRihVh..g_LbaSdMarVb) read BIN/MARIA_SD.BIN, her two
+            // banks laid out as those files are
+            // (mods/sotn-ultimate/tools/gen_mar_sounds.py)
+            CdFile* sd = &g_LbaSdRihVh;
+#if OFF_BIN_RIH_PSP != 0
+            // PSP dub: Richter's PSP grunts (BIN/RIH_PSP.BIN, his vab 1 with
+            // the PSP clips + the retail SD_MAR, the same layout;
+            // mods/sotn-ultimate/tools/gen_psp_grunts.py). Maria's banks
+            // replace it below (the JP dub: BIN/JP_SD.BIN's copy with the
+            // Japanese clips, and the prologue Maria's in its SD_MAR)
+            s32 sdOff = MOD_JP_DUB_ON() && OFF_BIN_JP_SD
+                            ? OFF_BIN_JP_SD + MOD_JP_SD_RIH - 0x612D
+                        : MOD_PSP_DUB_ON() ? OFF_BIN_RIH_PSP - 0x612D
+                                           : 0;
+#else
+            s32 sdOff = 0;
+#endif
+            s32 sdLen = SD_MAR_VB_LEN;
+#endif
+            g_LbaBinRichter.loc =
+                MOD_RIC_COSTUME2() ? OFF_BIN_RIC2 : OFF_BIN_RIC;
+#if OFF_BIN_MARIA != 0
+            // Saturn port: the Saturn's Maria is a fork of Richter's
+            // overlay, larger (BIN/MARIA.BIN;
+            // mods/sotn-ultimate/tools/build_mar.sh)
+            g_LbaBinRichter.size = 0x39A58;
+            if (g_PlayableCharacter == PLAYER_MARIA) {
+                g_LbaBinRichter.loc = OFF_BIN_MARIA;
+                g_LbaBinRichter.size = LEN_BIN_MARIA;
+#if OFF_BIN_MARIA_SD != 0
+                // her Japanese Saturn voice for the JP dub, the PS1 dub's
+                // bank (BIN/MARIA_SD_PS1.BIN: a copy of the PSP one, as her
+                // select panel has no PS1 dub), else the PSP English lines
+                // (BIN/MARIA_SD_PSP.BIN); all the same layout
+                sdOff =
+                    (MOD_JP_DUB_ON() || !OFF_BIN_MARIA_SD_PSP ? OFF_BIN_MARIA_SD
+                     : !MOD_PSP_DUB_ON() && OFF_BIN_MARIA_SD_PS1
+                         ? OFF_BIN_MARIA_SD_PS1
+                         : OFF_BIN_MARIA_SD_PSP) -
+                    0x612D;
+                sdLen = vab2Len; // her vab 2 is larger than SD_MAR's
+#endif
+#if OFF_BIN_MARIA2 != 0 && OFF_BIN_MARIA2_SD != 0
+                // Saturn port: the PSP Maria (the select screen's Maria
+                // "PSP"): src/maria built for the PS1 (BIN/MARIA2.BIN;
+                // mods/sotn-ultimate/tools/build_mar2.sh), her PSP voice in
+                // BIN/MARIA2_SD.BIN (same layout and vab 2 size as
+                // MARIA_SD.BIN)
+                if (MOD_MARIA_PSP()) {
+                    g_LbaBinRichter.loc = OFF_BIN_MARIA2;
+                    g_LbaBinRichter.size = LEN_BIN_MARIA2;
+                    // the PS1 dub: her bank after the Saturn Maria's in
+                    // MARIA_SD_PS1.BIN (a copy of MARIA2_SD.BIN;
+                    // build_disc.sh)
+                    sdOff = (MOD_JP_DUB_ON() && OFF_BIN_JP_SD
+                                 ? OFF_BIN_JP_SD + MOD_JP_SD_MAR2
+                             : !MOD_PSP_DUB_ON() && OFF_BIN_MARIA_SD_PS1
+                                 ? OFF_BIN_MARIA_SD_PS1 + MOD_MAR_SD_SECTORS
+                                 : OFF_BIN_MARIA2_SD) -
+                            0x612D;
+                }
+#endif
+            }
+#if OFF_BIN_MARIA2 != 0
+            // the HUD's subweapon icons: Richter's table, unless the PSP
+            // Maria's overlay points it at hers
+            // (mods/sotn-ultimate/src/maria_psp/mar2.c)
+            g_ModSubwpnIcons = g_ricSubwpnIcons;
+            g_ModMar2HudIcons = NULL;
+#endif
+#if OFF_BIN_MARIA != 0
+            ModMarSfxPrio(
+                g_PlayableCharacter == PLAYER_MARIA && !MOD_MARIA_PSP());
+#endif
+#if OFF_BIN_MARIA_SD != 0
+            sd[0].loc = 0x612D + sdOff;
+            sd[1].loc = 0x6130 + sdOff;
+            sd[2].loc = 0x614D + sdOff;
+            sd[3].loc = 0x614F + sdOff;
+            sd[3].size = sdLen;
+#endif
+#endif
+        }
+#endif
+#if defined(MOD_SATURN) && OFF_BIN_ALK_PSP != 0
+        // PSP dub: Alucard's PSP grunts (BIN/ALK_PSP.BIN, laid out as
+        // VAB/SD_ALK.VH/VB; mods/sotn-ultimate/tools/gen_psp_grunts.py). The
+        // overlay's load goes on to those two CdFiles
+        if (*pLoadFile == CdFile_AlucardPrg) {
+            s32 alkOff = MOD_JP_DUB_ON() && OFF_BIN_JP_SD
+                             ? OFF_BIN_JP_SD + MOD_JP_SD_ALK - 0x610D
+                         : MOD_PSP_DUB_ON() ? OFF_BIN_ALK_PSP - 0x610D
+                                            : 0;
+            ModMarSfxPrio(false); // retail (a Maria game earlier this session)
+            g_LbaSdAlkVh.loc = 0x610D + alkOff;
+            g_LbaSdAlkVb.loc = 0x6110 + alkOff;
+            // the System screen's Dub reload may have left its link to the
+            // stage bank (mods/sotn-ultimate/src/menu/sysopt.c
+            // SysOptBanks): not here
+            g_LbaSdAlkVh.nextCdFileType = CdFile_NoNext;
+        }
+#endif
         if (g_LoadFile == CdFile_ServantChr) {
             g_LbaServantChr.loc = g_LbaServantChrOff[g_LoadOvlIdx];
             g_LbaServantVh.loc = g_LbaServantVhOff[g_LoadOvlIdx];
             g_LbaServantVh.size = g_LbaServantVhLen[g_LoadOvlIdx];
             g_LbaServantVb.loc = g_LbaServantVbOff[g_LoadOvlIdx];
             g_LbaServantVb.size = g_LbaServantVbLen[g_LoadOvlIdx];
+#if defined(MOD_SATURN) && OFF_BIN_SFX_PSP != 0
+            // PSP dub: the familiar's PSP voices (BIN/SFX_PSP.BIN: VH, then
+            // VB from the next sector; every familiar has one, gen_psp_sfx.py).
+            // The Pixie and the Nosedevil (5, 6) are silent in the US PS1:
+            // their PSP voices in the PS1 dub too
+            if (MOD_PSP_DUB_ON() || g_LoadOvlIdx >= 5) {
+                g_LbaServantVh.loc =
+                    OFF_BIN_SFX_PSP - 1 + g_ModPspServantSfx[g_LoadOvlIdx];
+                g_LbaServantVb.loc =
+                    g_LbaServantVh.loc +
+                    ((g_LbaServantVhLen[g_LoadOvlIdx] + 0x7FF) >> 11);
+#if OFF_BIN_JP_SD != 0
+                // the JP dub: the bank with its Japanese clips, or retail
+                {
+                    s32 jp = ModJpSfx(g_ModPspServantSfx[g_LoadOvlIdx]);
+                    if (jp < 0) {
+                        g_LbaServantVh.loc = g_LbaServantVhOff[g_LoadOvlIdx];
+                        g_LbaServantVb.loc = g_LbaServantVbOff[g_LoadOvlIdx];
+                    } else if (jp) {
+                        g_LbaServantVh.loc = jp;
+                        g_LbaServantVb.loc =
+                            jp +
+                            ((g_LbaServantVhLen[g_LoadOvlIdx] + 0x7FF) >> 11);
+                    }
+                }
+#endif
+            }
+#endif
         }
     }
 
@@ -697,7 +956,9 @@ void UpdateCd(void) {
         break;
 
     case CdStep_LoadInit:
+#if !defined(MOD_DRA_STRIP) // D_80137FAC: written, never read
         D_80137FAC = 0;
+#endif
         if (g_LoadFile == CdFile_None) {
             g_CdStep = CdStep_None;
             break;
@@ -780,8 +1041,41 @@ void UpdateCd(void) {
                     CdIntToPos(
                         g_EquippedWeaponIds[1] * 14 + cdFile->loc, &g_CdLoc);
                 }
+#if defined(MOD_SATURN)
+#ifndef OFF_BIN_WEAPON2
+                // (the first compile of make disk, before it regenerates
+                // lba_us.h with the file in it)
+#define OFF_BIN_WEAPON2 0
+#endif
+                // Saturn port: weapons 60-63 are in BIN/WEAPON2.BIN, a
+                // slot (0x7000 bytes, 14 sectors) per weapon and hand: the
+                // retail WEAPON0/1.BIN hold 0-58 and can't grow (the files
+                // after them are at fixed positions)
+                if ((g_CdCallback == CdCallback_12 ||
+                     g_CdCallback == CdCallback_13) &&
+                    g_EquippedWeaponIds[g_CdCallback == CdCallback_13] >=
+                        MOD_FIRST_WEAPON2) {
+                    CdIntToPos(OFF_BIN_WEAPON2 +
+                                   ((g_EquippedWeaponIds[g_CdCallback ==
+                                                         CdCallback_13] -
+                                     MOD_FIRST_WEAPON2) *
+                                        2 +
+                                    (g_CdCallback == CdCallback_13)) *
+                                       14,
+                               &g_CdLoc);
+                }
+#endif
                 if (g_CdCallback == CdCallback_Monster) {
+#if defined(MOD_SATURN)
+                    CdIntToPos(
+                        g_LoadOvlIdx * 11 +
+                            (g_LoadOvlIdx >= MOD_FIRST_MONSTER2
+                                 ? OFF_BIN_MONSTER2 - MOD_FIRST_MONSTER2 * 11
+                                 : cdFile->loc),
+                        &g_CdLoc);
+#else
                     CdIntToPos(g_LoadOvlIdx * 11 + cdFile->loc, &g_CdLoc);
+#endif
                 }
                 if (g_CdCallback == CdCallback_4) {
                     CdIntToPos(g_LoadOvlIdx * 4 + cdFile->loc, &g_CdLoc);
@@ -867,6 +1161,13 @@ void UpdateCd(void) {
         case CdCallback_StageChr:
             StoreImage(&g_Vram.D_800ACDB8, g_Clut[0]);
             break;
+#if defined(MOD_SATURN)
+        case CdCallback_Ric: // (Alucard's overlay uses it too)
+            if (g_LoadFile == CdFile_RichterPrg) {
+                ModRicCostumeApply();
+            }
+            break;
+#endif
         case CdCallback_16:
             D_80137FB0 = (short)SsVabOpenHeadSticky(
                 g_Cd.addr, g_VabId, g_VabAddrs[g_VabId]);

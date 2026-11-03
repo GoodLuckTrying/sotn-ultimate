@@ -64,7 +64,17 @@ bool func_8010FDF8(s32 branchFlags) {
                     CreateEntFactoryFromEntity(g_CurrentEntity, BP_0, 0);
                 } else {
                     if (g_Player.unk44 & 0x10) {
+#if defined(MOD_GODSPEED)
+                        // Saturn func_060A50E0: landing resumes the sprint
+                        if ((g_Player.unk44 & GODSPEED_JUMP_FLAG) &&
+                            IsRelicActive(RELIC_GODSPEED_SHOES)) {
+                            GodspeedStartSprint();
+                        } else {
+                            func_8010E6AC(1);
+                        }
+#else
                         func_8010E6AC(1);
+#endif
                     } else {
                         func_8010E570(0);
                     }
@@ -84,7 +94,16 @@ bool func_8010FDF8(s32 branchFlags) {
                 PlaySfx(SFX_STOMP_HARD_B);
                 CreateEntFactoryFromEntity(g_CurrentEntity, BP_0, 0);
             } else if (g_Player.unk44 & 0x10) {
+#if defined(MOD_GODSPEED)
+                if ((g_Player.unk44 & GODSPEED_JUMP_FLAG) &&
+                    IsRelicActive(RELIC_GODSPEED_SHOES)) {
+                    GodspeedStartSprint();
+                } else {
+                    func_8010E6AC(1);
+                }
+#else
                 func_8010E6AC(1);
+#endif
                 PlaySfx(SFX_STOMP_SOFT_B, SFX_arg, 0);
             } else if (abs(PLAYER.velocityX) > FIX(2)) {
                 PlaySfx(SFX_STOMP_HARD_B);
@@ -112,6 +131,16 @@ bool func_8010FDF8(s32 branchFlags) {
         g_Player.padPressed & (PAD_SQUARE | PAD_CIRCLE) && func_8010EDB8()) {
         return 1;
     }
+#if defined(MOD_SATURN)
+    // Saturn 060A50E0: the third hand on a tap of its button (button config
+    // action 8 = virtual PAD_L2), human form on the ground or in the air,
+    // also during a hand attack (mods/sotn-ultimate/src/items/mod_holder.h)
+    if (branchFlags & 0x1000 && MOD_HOLDER_ON() &&
+        !(g_Player.status & PLAYER_STATUS_UNK8) &&
+        g_Player.padTapped & PAD_L2 && ModHolderUse()) {
+        return 1;
+    }
+#endif
 
     if (!(g_Player.unk46 & 0x8000)) {
         if (branchFlags & 0x10 && g_Player.padTapped & PAD_CROSS) {

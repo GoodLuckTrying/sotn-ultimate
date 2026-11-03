@@ -222,6 +222,7 @@ void DemoOpenFile(s32 arg0) {
         return;
     }
 
+#if !defined(MOD_DRA_STRIP) // the PC (sim:) file reader: g_UseDisk is 1
 #ifdef VERSION_PC
     memset(DEMO_KEY_PTR, 0, DEMO_MAX_LEN);
     FileReadToBuf("disks/us/BIN/DEMOKEY.BIN", DEMO_KEY_PTR,
@@ -243,8 +244,11 @@ void DemoOpenFile(s32 arg0) {
     }
     read(fd, DEMO_KEY_PTR, 0x2000);
     close(fd);
+#endif
 }
 
+#if !defined(                                                                  \
+    MOD_DRA_STRIP) // only the dropped demo recorder saved (to a PC file)
 void DemoSaveFile(void) {
     char buf[0x100];
     long fd;
@@ -266,6 +270,7 @@ void DemoSaveFile(void) {
     __builtin_memcpy(buf, "  OK", sizeof("  OK"));
     DebugInputWait(buf);
 }
+#endif
 
 void DemoInit(s32 arg0) {
     s32* temp;
@@ -285,9 +290,11 @@ void DemoInit(s32 arg0) {
         }
         break;
 
+#if !defined(MOD_DRA_STRIP)
     case 1:
         g_DemoMode = Demo_Recording;
         break;
+#endif
     }
 }
 
@@ -331,6 +338,9 @@ void DemoUpdate(void) {
         }
         break;
 
+#if !defined(MOD_DRA_STRIP)
+    // recording needs DemoInit(1), only called from the debug start that
+    // US never runs (g_DebugPlayer is always 0)
     case Demo_Recording:
         FntPrint("demo key in:%04x/%04x\n", (s32)(g_DemoPtr - DEMO_KEY_PTR),
                  DEMO_MAX_LEN);
@@ -359,5 +369,6 @@ void DemoUpdate(void) {
             g_DemoPtr[2] = 1;
         }
         break;
+#endif
     }
 }

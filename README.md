@@ -1,3 +1,22 @@
+# SOTN Ultimate (PS1 Version)
+
+A mod of *Castlevania: Symphony of the Night* for the PlayStation that brings
+the Sega Saturn version's exclusive content and the PSP *Dracula X Chronicles*
+additions to the PS1, on one CD. **This repository contains no game data**:
+players build the game from their own discs with the builder page on the
+[Releases](https://github.com/renanbianchi/sotn-ultimate/releases) page.
+
+The mod lives in [`mods/sotn-ultimate`](mods/sotn-ultimate); its
+[README](mods/sotn-ultimate/README.md) covers the discs it takes, building
+from source, the tests, how it sits on top of sotn-decomp (the developer
+notes), the licence and the credits.
+
+---
+
+# About sotn-decomp (upstream)
+
+The text below is sotn-decomp's own README.
+
 # Castlevania: Symphony of the Night Decompilation
 
 A work-in-progress decompilation of Castlevania Symphony of the Night for Sony PlayStation 1, Sony PlayStation Portable and Sega Saturn. It aims to recreate the source code from the existing binaries using static and/or dynamic analysis. The code compiles byte-for-byte to the same binaries of the game, effectively being a matching decompilation.

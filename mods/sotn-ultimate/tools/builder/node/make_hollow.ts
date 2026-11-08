@@ -60,6 +60,7 @@ const FILE_SPANS: [string, string][] = [
     ["ST/TE3/F_TE3.BIN", "stage_rgdn"],
     ["ST/TE4/F_TE4.BIN", "stage_rprs"],
     ["ST/NP3/F_NP3.BIN", "mod_rooms"],
+    ["ST/NO3/F_NO3.BIN", "mod_rooms"],
     ["ST/RNO3/F_RNO3.BIN", "mod_rooms"],
     ["ST/WRP/F_WRP.BIN", "mod_rooms"],
     ["ST/RWRP/F_RWRP.BIN", "mod_rooms"],
@@ -84,6 +85,7 @@ const SELF_MAPS: Record<string, [string, number]> = {
 // is used once its gen has a converter in src/build.ts
 const ARRAY_SOURCES: ArraySource[] = [
     { gen: "mod_rooms", disc: "ST/NP3/NP3.BIN", files: ["src/st/np3/mod_rooms.h"], map: "build/us/stnp3.map", base: 0x80180000 },
+    { gen: "mod_rooms", disc: "ST/NO3/NO3.BIN", files: ["src/st/no3/mod_rooms.h"], map: "build/us/stno3.map", base: 0x80180000 },
     { gen: "mod_rooms", disc: "ST/RNO3/RNO3.BIN", files: ["src/st/rno3/mod_rooms.h"], map: "build/us/strno3.map", base: 0x80180000 },
     { gen: "mod_rooms", disc: "ST/WRP/WRP.BIN", files: ["src/st/wrp/mod_rooms.h"], map: "build/us/stwrp.map", base: 0x80180000 },
     { gen: "mod_rooms", disc: "ST/RWRP/RWRP.BIN", files: ["src/st/rwrp/mod_rooms.h"], map: "build/us/strwrp.map", base: 0x80180000 },

@@ -644,7 +644,7 @@ async function main(): Promise<void> {
 
     const hollow = path.join(out, "hollow.bin");
     fs.writeFileSync(hollow, img);
-    const name = "SOTN Ultimate (PS1 Version) v1.3";
+    const name = "SOTN Ultimate (PS1 Version) v1.4";
     const patch = path.join(out, name + ".builder.xdelta");
     const usSize = fs.statSync(us).size;
     execFileSync("xdelta3", ["-e", "-f", "-9", "-S", "none", "-B", String(usSize), "-s", us, hollow, patch]);

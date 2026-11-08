@@ -1157,6 +1157,14 @@ s32 ApplySaveData(SaveData* save) {
     g_Settings = *settings;
     g_Settings.D_8003CB00 |= prevCompletionFlags1;
     g_Settings.D_8003CB04 |= prevCompletionFlags2;
+#if defined(MOD_SATURN) && !defined(MOD_SAVE_DRA)
+    // Richter and Maria have no menu to leave mono (the retail new-game
+    // default, kept by saves made before stereo became the default): their
+    // saves load in stereo
+    if (g_PlayableCharacter != PLAYER_ALUCARD) {
+        g_Settings.isSoundMono = false;
+    }
+#endif
 
     for (i = 0; i < LEN(g_CastleFlags); i++) {
         g_CastleFlags[i] = savePtr->castleFlags[i];

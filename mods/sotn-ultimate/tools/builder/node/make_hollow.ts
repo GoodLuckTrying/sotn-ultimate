@@ -172,12 +172,14 @@ function python(code: string): string {
 
 // gen_saturn_music.py TRACKS / MIN_SECONDS / ONESHOTS, read from the script
 function musicConfig(): { tracks: MusicTrack[]; minSeconds: number; songs: SongStream[] } {
-    const [t, ms, os_, sil, bgm] = python(
+    const [t, ms, fade, os_, sil, bgm] = python(
         "import gen_saturn_music as g; print(json.dumps(g.TRACKS)); print(g.MIN_SECONDS); " +
+        "print(json.dumps([g.jump_fade_ms(p) for _, p, _ in g.TRACKS])); " +
         "print(json.dumps(g.ONESHOTS)); print(g.ONESHOT_SILENCE); print(g.PSP_BGM)").split("\n");
     const bgmPsp = PSP_RES + path.relative(path.join(ROOT, "disks/psp"), bgm);
     return {
-        tracks: JSON.parse(t).map(([name, pcm, gain]: [string, string, number]) => ({ name, pcm, gain })),
+        tracks: JSON.parse(t).map(([name, pcm, gain]: [string, string, number], i: number) =>
+            ({ name, pcm, gain, fadeMs: JSON.parse(fade)[i] })),
         minSeconds: Number(ms),
         songs: JSON.parse(os_).map(([, at3, gain]: [string, string, number]) => ({
             stream: at3, psp: bgmPsp + "/" + at3, gain: python("print(repr(" + gain + "))"), silence: Number(sil),

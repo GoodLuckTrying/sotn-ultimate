@@ -787,7 +787,9 @@ static FactoryBlueprint blueprints[] = {
     B_MAKE(0x56, 1, 1, 1, 1, 0, 0, 0, 0),
     B_MAKE(0x57, 1, 1, 1, 1, 0, 1, 0, 0),
     B_MAKE(0x58, 1, 1, 0, 1, 0, 7, 3, 0), // 99 fully charged
-    B_MAKE(0x59, 4, 1, 0, 1, 3, 0, 1, 1), // 100 its diamonds
+    // 100 its diamonds: one a frame (the Saturn's table: 3 frames apart);
+    // MarEntityAura holds each back to start 0, 6, 8, 14 (mar_attacks.h)
+    B_MAKE(0x59, 4, 1, 0, 1, 1, 0, 1, 1),
     B_MAKE(0x5A, 1, 1, 1, 1, 0, 0, 1, 0),
     B_MAKE(0x5B, 1, 1, 0, 1, 1, 6, 2, 10),
     B_MAKE(0x5C, 3, 1, 1, 1, 5, 0, 2, 1),

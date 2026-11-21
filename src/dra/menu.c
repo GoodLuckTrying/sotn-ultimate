@@ -657,9 +657,11 @@ void MenuDrawImg(MenuContext* ctx, s32 x, s32 y, s32 w, u32 h, s32 u, s32 v,
     }
 }
 
+#if !defined(MOD_DRA_STRIP) // only the stripped MENU_STEP_UNK_3x called it
 void func_800F5A90(void) {
     MenuDrawImg(NULL, 96, 96, 64, 64, 0, 0, 0, 0x114, 1, 0);
 }
+#endif
 
 void func_800F5AE4(MenuContext* ctx) {
     s32 i, x;
@@ -890,7 +892,11 @@ void func_800F6568(MenuContext* ctx) {
     s32 height;
     s32 r;
 
+#if defined(MOD_SATURN)
+    height = ctx->cursorH / MOD_MAIN_ROWS();
+#else
     height = ctx->cursorH / 5;
+#endif
     if (g_Timer & 0x20) {
         r = 0x40 + (g_Timer & 0x1F);
     } else {
@@ -1158,7 +1164,11 @@ void MenuButtonConfigDraw(MenuContext* ctx) {
 
 #if defined(VERSION_US)
     const s32 startX = 0xC0;
+#if defined(MOD_PTBR)
+    const s32 W = 0x59;
+#else
     const s32 W = 0x54;
+#endif
     s32 cursorX = 0x98;
 #define XVAR x
 #elif defined(VERSION_PSP)
@@ -1173,6 +1183,14 @@ void MenuButtonConfigDraw(MenuContext* ctx) {
 #define XVAR cursorX
 #endif
 
+#if defined(MOD_SATURN)
+    if (MOD_IN_CHAR_MENU()) { // their buttons (src/menu/charmenu.c)
+        if (MOD_CHARMENU_OK()) {
+            MOD_CHARMENU_BLOB->btnDraw(ctx);
+        }
+        return;
+    }
+#endif
     for (i = 0, x = startX; i < MOD_BUTTON_ROWS(); i++) {
 #if defined(MOD_SATURN)
         MenuDrawStr(i == 7 ? MOD_HOLDER_STR : g_MenuStr[i + 22], cursorX,
@@ -1218,7 +1236,9 @@ void MenuReverseCloakDraw(MenuContext* ctx) {
 }
 
 void MenuSoundConfigDraw(MenuContext* ctx) {
-#if defined(VERSION_US) || defined(VERSION_PSP)
+#if defined(MOD_PTBR)
+    const s32 ImgW = 64;
+#elif defined(VERSION_US) || defined(VERSION_PSP)
     const s32 ImgW = 53;
 #elif defined(VERSION_HD)
     const s32 ImgW = 37;
@@ -1230,6 +1250,13 @@ void MenuSoundConfigDraw(MenuContext* ctx) {
     return;
 #endif
 
+#if defined(MOD_SATURN)
+    // Richter's / the Marias' Extra settings popup uses this window
+    if (MOD_IN_CHAR_MENU() && MOD_CHARMENU_OK() &&
+        MOD_CHARMENU_BLOB->popDraw(ctx)) {
+        return;
+    }
+#endif
     MenuDrawStr(g_MenuStr[33], cursorX + 4, cursorY + 4, ctx);
     MenuDrawStr(g_MenuStr[34], cursorX + 4, cursorY + 20, ctx);
     func_800F5E68(
@@ -1330,6 +1357,11 @@ void MenuStatChangesDraw(void) {
     }
 }
 
+#if defined(MOD_SATURN)
+extern s16* D_800D0F68[]; // ANIMSET_DRA(3), the item drops' frames
+#include "../../mods/sotn-ultimate/src/menu/menu_mod_charmenu.h"
+#endif
+
 void MenuDrawStats(s32 menuDialogue) {
     MenuContext* ctx;
     s32 buttonCFG;
@@ -1338,6 +1370,14 @@ void MenuDrawStats(s32 menuDialogue) {
     s32 phi_a0_5;
 
     ctx = &g_Menus[menuDialogue];
+#if defined(MOD_SATURN)
+    if (MOD_IN_CHAR_MENU()) { // Richter / the Marias (no make_all: Alucard's)
+        if (MOD_CHARMENU_OK()) {
+            MOD_CHARMENU_BLOB->stats(ctx);
+        }
+        return;
+    }
+#endif
     make_all();
     if (menuDialogue == MENU_DG_BG) {
         MenuDrawAlucardPortrait(ctx);
@@ -1622,8 +1662,13 @@ void MenuFamiliarsDraw(MenuContext* ctx) {
         } else {
             strId = 43;
         }
+#if defined(MOD_PTBR)
+#define MOD_FAM_LABEL_X 64
+#define MOD_FAM_NUM_X 120
+#else
 #define MOD_FAM_LABEL_X 56
 #define MOD_FAM_NUM_X 112
+#endif
         MenuDrawStr(g_MenuStr[strId], x + MOD_FAM_LABEL_X, y, ctx);
 #if defined(MOD_SATURN)
         MenuDrawInt(stats.level, x + MOD_FAM_NUM_X, y, ctx);
@@ -1695,6 +1740,14 @@ void MenuSystemDraw(MenuContext* ctx) {
     s32 strIdx;
     s32 y = 0x30;
 
+#if defined(MOD_SATURN)
+    if (MOD_IN_CHAR_MENU()) { // their rows (src/menu/charmenu.c)
+        if (MOD_CHARMENU_OK()) {
+            MOD_CHARMENU_BLOB->sysDraw(ctx);
+        }
+        return;
+    }
+#endif
     MOD_SYSOPT_BOX(ctx, g_MenuNavigation.cursorSettings, 30, 46, Width, 12, 4,
                    g_MenuStep == MENU_STEP_SYSTEM);
 
@@ -2171,6 +2224,14 @@ void MenuDraw(void) {
         switch (i) {
         case MENU_DG_MAIN:
             func_800F6568(menu);
+#if defined(MOD_SATURN)
+            if (MOD_IN_CHAR_MENU()) {
+                if (MOD_CHARMENU_OK()) {
+                    MOD_CHARMENU_BLOB->main(menu, x, y);
+                }
+                break;
+            }
+#endif
             func_800F8754(menu, x, y);
             break;
         case MENU_DG_BG:
@@ -2234,6 +2295,14 @@ void MenuDraw(void) {
             DrawRelicsMenu(menu);
             break;
         case MENU_DG_SPELLS:
+#if defined(MOD_SATURN)
+            if (MOD_IN_CHAR_MENU()) { // their Commands
+                if (MOD_CHARMENU_OK()) {
+                    MOD_CHARMENU_BLOB->cmdDraw(menu);
+                }
+                break;
+            }
+#endif
             MenuSpellsDraw(menu);
             break;
         case MENU_DG_SETTINGS:
@@ -3215,11 +3284,15 @@ MenuContextInit g_MenuInit[NUM_MENU] = {
     {168, 120, 144, 64, 0x30}, // MENU_DG_CLOAK_COLOR
     {148, 44, 200, 112, 0x30}, // MENU_DG_CFG_BUTTONS
     {172, 44, 65, 32, 0x30},   // MENU_DG_CLOAK_LINING
-    {172, 112, 57, 32, 0x30},  // MENU_DG_CFG_SOUND
-    {172, 76, 124, 40, 0x30},  // MENU_DG_WINDOW_COLORS
-    {12, 32, 340, 153, 0x30},  // MENU_DG_TIME_ATTACK
-    {276, 32, 77, 183, 0x50},  // MENU_DG_EQUIP_SORT
-    {0, 24, 360, 200, 0x18},   // MENU_DG_FAMILIARS
+#if defined(MOD_PTBR)
+    {172, 112, 68, 32, 0x30},
+#else
+    {172, 112, 57, 32, 0x30}, // MENU_DG_CFG_SOUND
+#endif
+    {172, 76, 124, 40, 0x30}, // MENU_DG_WINDOW_COLORS
+    {12, 32, 340, 153, 0x30}, // MENU_DG_TIME_ATTACK
+    {276, 32, 77, 183, 0x50}, // MENU_DG_EQUIP_SORT
+    {0, 24, 360, 200, 0x18},  // MENU_DG_FAMILIARS
 #elif defined(VERSION_PSP)
     {142, 100, 84, 112, 0x40}, // MENU_DG_MAIN
     {0, 24, 360, 200, 0x10},   // MENU_DG_BG
@@ -3570,6 +3643,9 @@ block_4:
         func_800EA5E4(0);
         func_800FAC30();
         func_800FB9BC();
+#if defined(MOD_SATURN)
+        ModCharMenuInit();
+#endif
         g_PrevEquippedWeapons[LEFT_HAND_SLOT] =
             g_Status.equipment[LEFT_HAND_SLOT];
         g_PrevEquippedWeapons[RIGHT_HAND_SLOT] =
@@ -3604,6 +3680,11 @@ block_4:
         g_IsCloakColorUnlocked =
             g_Status.equipBodyCount[ITEM_JOSEPHS_CLOAK] |
             g_Status.equipment[CAPE_SLOT] == ITEM_JOSEPHS_CLOAK;
+#if defined(MOD_SATURN)
+        if (MOD_IN_CHAR_MENU()) { // (Alucard's cape)
+            g_IsCloakLiningUnlocked = g_IsCloakColorUnlocked = 0;
+        }
+#endif
         g_MenuStep++;
         break;
     case MENU_STEP_FADE_FROM_GAME:
@@ -3618,7 +3699,12 @@ block_4:
         g_MenuStep++;
         break;
     case MENU_STEP_OPENING:
+#if defined(MOD_SATURN)
+        // (the music has stopped: the CD is free for their menu's file)
+        if (func_80133950() && ModCharMenuLoaded()) {
+#else
         if (func_80133950()) {
+#endif
             prevMusicId = currentMusicId;
             currentMusicId = 0;
             func_800F6A48();
@@ -3657,7 +3743,18 @@ block_4:
         }
         break;
     case MENU_STEP_EXIT_5:
-        UpdateCapePalette();
+#if defined(MOD_SATURN)
+        // the stage graphics reload below goes through g_Pix: their menu's
+        // code is gone from here on
+        MOD_CHARMENU_BLOB->magic = 0;
+        // a new costume: his files first, so the room's graphics below go
+        // back over F_GAME2's
+        if (MOD_IN_CHAR_MENU() && ModCharSwapLoad()) {
+            break;
+        }
+        if (!MOD_IN_CHAR_MENU()) // (Alucard's cape)
+#endif
+            UpdateCapePalette();
         LoadGfxAsync(D_80097904);
         g_MenuStep++;
         break;
@@ -3665,6 +3762,17 @@ block_4:
         if (func_800EB720()) {
             break;
         }
+#if defined(MOD_SATURN)
+        // Richter / the Marias: none of Alucard's weapon / familiar reloads
+        // (their file is at those addresses)
+        if (MOD_IN_CHAR_MENU()) {
+            // (after their Extra settings' voice bank reload, if any)
+            if (g_CdStep == CdStep_None) {
+                g_MenuStep = MENU_STEP_EXIT_12;
+            }
+            break;
+        }
+#endif
         if (!LoadWeaponPrg(LEFT_HAND_SLOT)) {
             break;
         }
@@ -3764,12 +3872,26 @@ block_4:
         if (stopMusicFlag == 0) {
             PlaySfx(SET_XA_PLAYBACK);
         }
-        CheckWeaponCombo();
-        make_all();
+#if defined(MOD_SATURN)
+        if (!MOD_IN_CHAR_MENU()) {
+#endif
+            CheckWeaponCombo();
+            make_all();
+#if defined(MOD_SATURN)
+        }
+#endif
+#if defined(MOD_SATURN)
+        if (g_ModDub.charSwap) {
+            ModCharSwap();
+        }
+#endif
         D_800973EC = 0;
         func_800FAC30();
         func_800F86E4();
-        func_8010A234(1);
+#if defined(MOD_SATURN)
+        if (!MOD_IN_CHAR_MENU()) // (calls Alucard's weapon at 0x8017A000)
+#endif
+            func_8010A234(1);
         g_MenuStep++;
         break;
     case MENU_STEP_EXIT_13:
@@ -3800,34 +3922,48 @@ block_4:
             g_MenuStep = MENU_STEP_EXIT_BEGIN;
             goto block_4;
         }
+#if defined(MOD_SATURN)
+        MenuHandleCursorInput(&g_MenuNavigation.cursorMain, MOD_MAIN_ROWS(), 0);
+#else
         MenuHandleCursorInput(&g_MenuNavigation.cursorMain, 5, 0);
+#endif
         if (g_pads[0].tapped & PAD_MENU_SELECT) {
-            switch (g_MenuNavigation.cursorMain) {
-            case 0:
-                MenuShow(MENU_DG_EQUIP_OVERVIEW);
-                func_800FB0FC();
-                func_800FADC0();
-                MenuShow(MENU_DG_EQUIP_SELECTOR);
-                MenuShow(MENU_DG_INFO_BAR);
-                g_MenuStep = MENU_STEP_EQUIP;
-                break;
-            case 1:
-                if (D_801375DC) {
-                    g_MenuStep = MENU_STEP_SPELL_INIT;
+#if defined(MOD_SATURN)
+            // Richter / the Marias: Commands, System (the blob's)
+            if (MOD_IN_CHAR_MENU()) {
+                if (MOD_CHARMENU_OK()) {
+                    g_MenuStep = g_MenuNavigation.cursorMain
+                                     ? MENU_STEP_SYSTEM_INIT
+                                     : MENU_STEP_SPELL_INIT;
                 }
-                break;
-            case 2:
-                func_800F9E18(0);
-                g_MenuStep = MENU_STEP_RELIC_INIT;
-                break;
-            case 3:
-                g_MenuStep = MENU_STEP_SYSTEM_INIT;
-                break;
-            case 4:
-                if (D_801375E0[NUM_FAMILIARS]) {
-                    g_MenuStep = MENU_STEP_FAMILIAR_INIT;
-                }
-                break;
+            } else
+#endif
+                switch (g_MenuNavigation.cursorMain) {
+                case 0:
+                    MenuShow(MENU_DG_EQUIP_OVERVIEW);
+                    func_800FB0FC();
+                    func_800FADC0();
+                    MenuShow(MENU_DG_EQUIP_SELECTOR);
+                    MenuShow(MENU_DG_INFO_BAR);
+                    g_MenuStep = MENU_STEP_EQUIP;
+                    break;
+                case 1:
+                    if (D_801375DC) {
+                        g_MenuStep = MENU_STEP_SPELL_INIT;
+                    }
+                    break;
+                case 2:
+                    func_800F9E18(0);
+                    g_MenuStep = MENU_STEP_RELIC_INIT;
+                    break;
+                case 3:
+                    g_MenuStep = MENU_STEP_SYSTEM_INIT;
+                    break;
+                case 4:
+                    if (D_801375E0[NUM_FAMILIARS]) {
+                        g_MenuStep = MENU_STEP_FAMILIAR_INIT;
+                    }
+                    break;
 #if defined(VERSION_PSP)
             case 5:
                 if (D_8006C378 < 0) {
@@ -3914,11 +4050,22 @@ block_4:
         }
         break;
     case MENU_STEP_SYSTEM_INIT:
-        func_800F82F4();
+#if defined(MOD_SATURN)
+        // Alucard's cloak previews, through pointers in his file at
+        // 0x8013C200: in Richter's / the Marias' files that is other data
+        if (!MOD_IN_CHAR_MENU())
+#endif
+            func_800F82F4();
         MenuShow(MENU_DG_INFO_BAR);
         MenuShow(MENU_DG_SETTINGS);
         g_MenuStep++;
     case MENU_STEP_SYSTEM:
+#if defined(MOD_SATURN)
+        if (MOD_IN_CHAR_MENU()) { // Button set-up, Window color, Sound
+            MOD_CHARMENU_BLOB->sysStep();
+            break;
+        }
+#endif
         MOD_SYSOPT_INPUT(&g_MenuNavigation.cursorSettings, 6, 0);
         func_800F9808(2);
         i = g_MenuNavigation.cursorSettings + 1;
@@ -3989,6 +4136,12 @@ block_4:
         }
         break;
     case MENU_STEP_SYSTEM_BUTTONS:
+#if defined(MOD_SATURN)
+        if (MOD_IN_CHAR_MENU()) { // their own buttons
+            MOD_CHARMENU_BLOB->btnStep();
+            break;
+        }
+#endif
         MenuHandleCursorInput(
             &g_MenuNavigation.cursorButtons, MOD_BUTTON_ROWS(), 0);
         MenuHandleCursorInput(
@@ -4211,6 +4364,12 @@ block_4:
         break;
 
     case MENU_STEP_SPELL_INIT:
+#if defined(MOD_SATURN)
+        if (MOD_IN_CHAR_MENU()) { // their Commands (the step stays here)
+            MOD_CHARMENU_BLOB->cmdStep();
+            break;
+        }
+#endif
         MenuShow(MENU_DG_INFO_BAR);
         MenuShow(MENU_DG_SPELLS);
         func_800F9808(2);
@@ -4244,6 +4403,9 @@ block_4:
             g_MenuStep = MENU_STEP_OPENED;
         }
         break;
+#if !defined(MOD_DRA_STRIP)
+    // (MOD_DRA_STRIP: nothing sets MENU_STEP_UNK_32 and 33..37 follow
+    // only from it)
     case MENU_STEP_UNK_32:
         if (func_801025F4()) {
             SetFadeWidth(DISP_STAGE_W);
@@ -4291,6 +4453,7 @@ block_4:
         }
         g_MenuStep = MENU_STEP_SPELL;
         break;
+#endif
     case MENU_STEP_EQUIP:
         D_80137948 = 0;
 #if defined(MOD_SATURN)

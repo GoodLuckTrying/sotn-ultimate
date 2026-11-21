@@ -61,7 +61,23 @@ static s32 D_80174F80[11];
 void func_8015F9F0(Entity* entity) {
     s32 i;
     s32 enemyId;
+#if defined(MOD_MARIA_SAT)
+    // Saturn 060ABE94: her attacks never take id 2, which the per-frame
+    // recount below never counts (so every holy water flame got id 2 and the
+    // trail hit as one attacker, once per 16 frames): slots below 32 take
+    // the least-used of ids 3-6, the rest of ids 7-10
+    s32 lo = entity < &g_Entities[32] ? 3 : 7;
 
+    for (i = 0;; i++) {
+        for (enemyId = lo; enemyId < lo + 4; ++enemyId) {
+            if (D_80174F80[enemyId] == i) {
+                ++D_80174F80[enemyId];
+                entity->enemyId = enemyId;
+                return;
+            }
+        }
+    }
+#else
     if (entity < &g_Entities[32]) {
         entity->enemyId = 1;
         return;
@@ -76,6 +92,7 @@ void func_8015F9F0(Entity* entity) {
             }
         }
     }
+#endif
 }
 
 #if defined(VERSION_PSP)

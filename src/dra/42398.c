@@ -262,8 +262,10 @@ void DebugCaptureVideo(void) {
 // the difference between the bytes the mod adds and the bytes it drops.
 // mods/sotn-ultimate/tools/check_dra_layout.sh prints the value to use after a
 // build.
-#define MOD_DRA_PAD 40
+#define MOD_DRA_PAD 104
+#if MOD_DRA_PAD > 0 // (a 0-size array with an initializer still takes a word)
 const u8 g_ModDraPad[MOD_DRA_PAD] = {1};
+#endif
 #endif
 
 // Saturn port: the palette viewer and its colour editor below, and the GPU

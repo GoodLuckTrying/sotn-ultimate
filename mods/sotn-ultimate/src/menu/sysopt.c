@@ -85,20 +85,38 @@ __asm__(".text\n"
         ".asciz \"Boss versions\\201\\103 game balance and voices\"\n"
         ".align 2\n");
 
-#define ROW 6     // the row, after the retail six (16 px apart: y 0x90)
-#define ROWS 4    // the popup's options
+#define ROW 6  // the row, after the retail six (16 px apart: y 0x90)
+#define ROWS 4 // the popup's options
+#if defined(MOD_PTBR)
+#define LANG ROWS
+#define POP_ROWS (ROWS + 1)
+#define POP_X 156
+#define POP_Y 108
+#define POP_W 200
+#define POP_H 80
+#else
+#define POP_ROWS ROWS
 #define POP_X 172 // the popup's window (the Sound box's is 172, 112, 57, 32)
 #define POP_Y 124 // (ends at 188: the info bar starts at 193)
 #define POP_W 168 // (the right margin as wide as the left one)
 #define POP_H 64
+#endif
 #define VALUE_DX 112
 
 static const char g_SysOptName[4][8] = {
     _S("PS1"), _S("Saturn"), _S("PSP"), _S("JP")};
 static const char* const g_SysOptLabel[ROWS] = {
     _S("Boss Richter"), _S("Boss Maria"), _S("Balance"), _S("Dub")};
+#if defined(MOD_PTBR)
+#include "mod_ptbr_sysopt.h"
+#define SYSOPT_NAME()                                                          \
+    (MOD_PTBR_TEXT_PT() ? g_ModPtbrSysOptName : _S("Extra settings"))
+#define SYSOPT_LABEL(r)                                                        \
+    (MOD_PTBR_TEXT_PT() ? g_ModPtbrSysOptLabel[r] : g_SysOptLabel[r])
+#else
 #define SYSOPT_NAME() _S("Extra settings")
 #define SYSOPT_LABEL(r) g_SysOptLabel[r]
+#endif
 // each option: the flag bits it owns, and per choice (the Player Select's
 // order, src/st/sel/2C048.c) their value and its name
 typedef struct {
@@ -246,20 +264,37 @@ static void SysOptBanks(void) {
     g_CdStep = CdStep_LoadInit;
 }
 
+#if defined(MOD_PTBR)
+static void SysOptLang(void) {
+    if (MOD_PTBR_BLOB[1] != MOD_PTBR_MAGIC) {
+        g_api.PlaySfx(SFX_UI_ERROR);
+        return;
+    }
+    MOD_PTBR_BLOB[2] ^= 1;
+    g_api.PlaySfx(SFX_UI_MOVE);
+    (*(void (**)(s32))MOD_PTBR_CODE)(1);
+}
+#endif
+
 // The box's input, while g_MenuStep is MOD_STEP_BOX: only when it is fully
 // open (Up / Down pick, Left / Right / X change, Triangle / Circle close)
 static void PopInput(MenuContext* pop) {
     const SysOptRow* row;
     s32 v;
 
-    MenuHandleCursorInput(&g_PopRow, ROWS, 0); // Up / Down, wraps
+    MenuHandleCursorInput(&g_PopRow, POP_ROWS, 0); // Up / Down, wraps
     row = &g_SysOptRows[g_PopRow];
     // X steps on as Right does
     if (g_pads[0].tapped & PAD_CROSS) {
         g_pads[0].repeat |= PAD_RIGHT;
     }
     if (g_pads[0].repeat & (PAD_LEFT | PAD_RIGHT)) {
-        if ((SysOptLocks() >> g_PopRow) & 1) {
+#if defined(MOD_PTBR)
+        if (g_PopRow == LANG) {
+            SysOptLang();
+        } else
+#endif
+            if ((SysOptLocks() >> g_PopRow) & 1) {
             g_api.PlaySfx(SFX_UI_ERROR);
         } else {
             v = SysOptCur(row);
@@ -345,6 +380,11 @@ void ModSysOptSound(MenuContext* ctx) {
             g_SysOptName[row->name[SysOptCur(row)]], x + VALUE_DX, y, ctx);
     }
     D_8013784C = 0;
+#if defined(MOD_PTBR)
+    MenuDrawStr(
+        MOD_PTBR_TEXT_PT() ? g_ModPtbrLangLabel : _S("Language"), x, y, ctx);
+    MenuDrawStr(g_ModPtbrLangName[MOD_PTBR_BLOB[2] != 0], x + VALUE_DX, y, ctx);
+#endif
     func_800F5E68(
         ctx, g_PopRow, ctx->cursorX + 2, ctx->cursorY + 2, POP_W - 4, 12, 4, 1);
 }
